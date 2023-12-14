@@ -1,0 +1,13 @@
+DECLARE name, address, telephone, major : STRING
+OUTPUT "Your name is "
+INPUT name
+OUTPUT "Your address is "
+INPUT address
+OUTPUT "Your telephone is "
+INPUT telephone
+OUTPUT "Your college major is "
+INPUT major
+OUTPUT "Name: ", name
+OUTPUT "Address: ", address
+OUTPUT "Telephone number: ", telephone
+OUTPUT "College major: ", major
