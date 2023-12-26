@@ -47,6 +47,8 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                     tokens.push(Token {t_type: TokenType::NumLit(value), col_s: col_c - temp.chars().count(), col_e: col_c, line_c: line_c});
                     temp.clear(); },
                 Err(_) => {
+                    eprintln!("Error Parsing Number literal");
+                    panic!()
                     // Handle Expection
                 }
             }
@@ -92,8 +94,8 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
         col_c += 1;
     }
     
-    println!("Token length {}", tokens.len());
-    println!("{:?}", tokens);
+    println!("Token Dump Start\nToken length {}", tokens.len());
+    println!("{:?}\nToken Dump End", tokens);
     
     tokens
     
@@ -188,7 +190,7 @@ pub struct Token {
     pub col_e: usize,
     pub line_c: usize,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     // DataType
     Integer,

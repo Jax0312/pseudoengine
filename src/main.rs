@@ -1,6 +1,7 @@
 use std::{fs::File, io::Read};
 mod lexer;
 mod parser;
+mod executor;
 
 fn main() {
     // Read input
@@ -9,8 +10,6 @@ fn main() {
     file.read_to_string(&mut buf);
     let mut buf = buf.chars();
     
-    parser::parse(&mut lexer::lexer(&mut buf));
-    
-    
+    executor::run(parser::parse(&mut lexer::lexer(&mut buf)));
     
 }

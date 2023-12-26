@@ -11,3 +11,4 @@ OUTPUT "Name: ", name
 OUTPUT "Address: ", address
 OUTPUT "Telephone number: ", telephone
 OUTPUT "College major: ", major
+OUTPUT 5
