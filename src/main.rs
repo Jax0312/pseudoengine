@@ -5,7 +5,7 @@ mod executor;
 
 fn main() {
     // Read input
-    let mut file = File::open("inputs/Q01.txt").unwrap();
+    let mut file = File::open("inputs/expression.txt").unwrap();
     let mut buf = String::new();
     file.read_to_string(&mut buf);
     let mut buf = buf.chars();
