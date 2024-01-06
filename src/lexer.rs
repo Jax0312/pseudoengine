@@ -95,7 +95,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
     }
     
     println!("Token Dump Start\nToken length {}", tokens.len());
-    println!("{:?}\nToken Dump End", tokens);
+    println!("{:#?}\nToken Dump End", tokens);
     
     tokens
     
@@ -190,6 +190,7 @@ pub struct Token {
     pub col_e: usize,
     pub line_c: usize,
 }
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     // DataType
