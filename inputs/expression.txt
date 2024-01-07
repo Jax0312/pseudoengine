@@ -1,3 +1,4 @@
-DECLARE num : INTEGER
-num <- 2 + 1 * 3 + 4
+DECLARE num, num2 : INTEGER
+INPUT num2
+num <- num2 * 1 + num2 + 10
 OUTPUT num

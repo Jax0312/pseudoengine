@@ -30,6 +30,11 @@ fn parse_assignment(tokens: &mut Peekable<Iter<Token>>, identifier: String) -> B
         ()
     }
 
+    // TODO
+    // So currently the op pred parsing can only be triggered by an expression starting with num lit.
+    // It should also trigger if the leading token of rhs is a identifier
+    // More robust handling required
+
     Box::new(Node::Assignment {
         lhs: Box::new(Node::Var(identifier.clone())),
         rhs: Box::new(parse_expr(tokens)),
@@ -115,21 +120,21 @@ fn parse_input(tokens: &mut Peekable<Iter<Token>>) -> Box<Node> {
 
 fn parse_output(tokens: &mut Peekable<Iter<Token>>) -> Box<Node> {
     let mut children = Vec::<Box<Node>>::new();
-    let mut expect_seperator = false;
+    let mut expect_separator = false;
     loop {
         let token = tokens.peek();
         if token.is_none() || token.unwrap().t_type == TokenType::LineEnd {
             break;
         }
-        if expect_seperator {
+        if expect_separator {
             if token.unwrap().t_type != TokenType::Comma {
                 break;
             }
             tokens.next();
-            expect_seperator = false;
+            expect_separator = false;
         } else {
             children.push(Box::new(parse_expr(tokens)));
-            expect_seperator = true;
+            expect_separator = true;
         }
     }
     Box::new(Node::Output { children })
