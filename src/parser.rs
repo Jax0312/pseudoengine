@@ -55,7 +55,7 @@ fn parse_expr_precedence(tokens: &mut Peekable<Iter<Token>>, mut lhs: Node, prec
                 let mut rhs = parse_primary(tokens);
                 if let Some(token) = tokens.peek() {
                     lookahead = (*token).clone();
-                    while tokens.peek().is_some() && op_precedence(&lookahead.t_type) > precedence {
+                    while tokens.peek().is_some() && op_precedence(&lookahead.t_type) > op_precedence(&op.t_type) {
                         rhs = parse_expr_precedence(tokens, rhs, op_precedence(&lookahead.t_type));
                         if let Some(token) = tokens.peek() {
                             lookahead = (*token).clone();
