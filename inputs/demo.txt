@@ -1,0 +1,4 @@
+DECLARE name : STRING
+OUTPUT "Your name is: "
+INPUT name
+OUTPUT "Name: ", name

@@ -19,7 +19,7 @@ pub fn parse(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
         }
     }
 
-    println!("{:#?}", nodes);
+    println!("{:?}", nodes);
 
     nodes
 }
@@ -46,7 +46,11 @@ fn parse_expr(tokens: &mut Peekable<Iter<Token>>) -> Node {
     parse_expr_precedence(tokens, lhs, 0)
 }
 
-fn parse_expr_precedence(tokens: &mut Peekable<Iter<Token>>, mut lhs: Node, precedence: i8) -> Node {
+fn parse_expr_precedence(
+    tokens: &mut Peekable<Iter<Token>>,
+    mut lhs: Node,
+    precedence: i8,
+) -> Node {
     if let Some(token) = tokens.peek() {
         let mut lookahead = (*token).clone();
         while tokens.peek().is_some() && op_precedence(&lookahead.t_type) >= precedence {
@@ -55,17 +59,19 @@ fn parse_expr_precedence(tokens: &mut Peekable<Iter<Token>>, mut lhs: Node, prec
                 let mut rhs = parse_primary(tokens);
                 if let Some(token) = tokens.peek() {
                     lookahead = (*token).clone();
-                    while tokens.peek().is_some() && op_precedence(&lookahead.t_type) > op_precedence(&op.t_type) {
+                    while tokens.peek().is_some()
+                        && op_precedence(&lookahead.t_type) > op_precedence(&op.t_type)
+                    {
                         rhs = parse_expr_precedence(tokens, rhs, op_precedence(&lookahead.t_type));
                         if let Some(token) = tokens.peek() {
                             lookahead = (*token).clone();
                         }
                     }
                 }
-                lhs = Node::BinaryExpr { 
+                lhs = Node::BinaryExpr {
                     op: Operator::from(&op.t_type),
-                    lhs: Box::new(lhs), 
-                    rhs: Box::new(rhs)
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
                 };
             }
         }
@@ -89,7 +95,7 @@ fn parse_primary(tokens: &mut Peekable<Iter<Token>>) -> Node {
         TokenType::NumLit(lit) => Node::Int(*lit),
         TokenType::StringLit(lit) => Node::String(lit.clone()),
         TokenType::Identifier(name) => Node::Var(name.clone()),
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }
 
@@ -155,11 +161,31 @@ fn parse_declare(tokens: &mut Peekable<Iter<Token>>) -> Box<Node> {
                 match &token.unwrap().t_type {
                     TokenType::Comma => (),
                     TokenType::Colon => break,
-                    TokenType::Identifier(_) => eprintln!("Expected comma"),
-                    _ => eprintln!("Error declaring"),
+                    TokenType::Identifier(_) => {
+                        eprintln!(
+                            "Expected comma at line {:?}:{:?}",
+                            &token.unwrap().line_c,
+                            &token.unwrap().col_s
+                        );
+                        panic!();
+                    },
+                    _ => {
+                        eprintln!(
+                            "Error declaring at line {:?}",
+                            &token.unwrap().line_c,
+                        );
+                        panic!();
+                    },
                 }
             }
-            _ => eprintln!("Expected identifier"),
+            _ => {
+                eprintln!(
+                    "Expected identifier at line {:?}:{:?}",
+                    &token.unwrap().line_c,
+                    &token.unwrap().col_s
+                );
+                panic!();
+            }
         }
     }
 
@@ -225,7 +251,7 @@ impl From<&TokenType> for Operator {
             TokenType::And => Operator::And,
             TokenType::Or => Operator::Or,
             TokenType::Not => Operator::Not,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -286,6 +312,6 @@ fn op_precedence(t_type: &TokenType) -> i8 {
         TokenType::And => 2,
         TokenType::Or => 1,
         TokenType::Not => 1,
-        _ => -1
+        _ => -1,
     }
 }
