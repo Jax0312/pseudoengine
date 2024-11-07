@@ -1,4 +1,4 @@
 DECLARE name : STRING
-OUTPUT "Your name is: "
+OUTPUT "Your name is: \n "
 INPUT name
 OUTPUT "Name: ", name

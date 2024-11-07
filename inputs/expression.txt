@@ -1,4 +1,7 @@
 DECLARE num, num2 : INTEGER
-INPUT num2
-num <- num2 * 1 + num2 + 10
+INPUT num2 // This is a cmmment hehe
+num <- num2 * 5 + num2 + 10.555 + .2
 OUTPUT num
+
+
+// THis is a comment
