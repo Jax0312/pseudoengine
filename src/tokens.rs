@@ -1,4 +1,6 @@
 use logos::Logos;
+use crate::enums::{Comparator, MOperator, VariableType};
+
 #[derive(Logos, Debug, PartialEq)]
 #[logos(skip r"[ \t\f]+")] // Ignore whitespace and tabs
 #[logos(skip r"//.*")] // Skip comment
@@ -46,6 +48,12 @@ pub enum Token {
     #[token(".")]
     Period,
 
+    // Type
+    #[token("INTEGER", |_| VariableType::Integer)]
+    #[token("REAL", |_| VariableType::Real)]
+    #[token("STRING", |_| VariableType::String)]
+    #[token("Date", |_| VariableType::Date)]
+    VarType(VariableType),
     // Math
 
     #[token("+", |_| MOperator::Plus)]
@@ -164,14 +172,9 @@ pub enum Token {
     #[token("WRITEFILE")]
     WriteFile,
     #[regex("[\r\n]+")]
-    NEWLINE,
+    Newline,
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_owned())]
     Identifier(String),
 }
 
-#[derive(Debug, PartialEq)]
-enum MOperator {Plus, Minus, Mul, Div, IntDiv, Mod}
-
-#[derive(Debug, PartialEq)]
-enum Comparator {Eq, Neq, Gt, Lt, Gte, Lte }

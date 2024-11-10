@@ -1,6 +1,145 @@
+use crate::enums::{Array, MOperator, VariableType};
 use crate::tokens::*;
-use std::iter::Peekable;
-use std::slice::Iter;
+use crate::FILEPATH;
+use codemap::CodeMap;
+use logos::Lexer;
+use std::fs::File;
+use std::io::Read;
+
+pub fn parse_file(lexer: & mut Lexer<Token>) -> Vec<Box<Node>> {
+    let mut nodes = Vec::<Box<Node>>::new();
+
+    while let Some(Ok(token)) = lexer.next() {
+        nodes.push(match token {
+            Token::Declare => parse_declare(lexer),
+            _ => Box::new(Node::Null),
+        })
+    }
+
+    println!("{:?}", nodes);
+
+    nodes
+}
+
+fn parse_declare(lexer: &mut Lexer<Token>) -> Box<Node> {
+    let mut expect_ident = false;
+    let mut vars = Vec::<String>::new();
+    let mut current;
+
+    // Handle one or more identifier
+    loop {
+        current = lexer.next();
+        match current {
+            Some(Ok(Token::Identifier(name))) => {
+                vars.push(name);
+                expect_ident = false;
+            }
+            Some(Ok(Token::Comma)) => {
+                if expect_ident {
+                    err("Identifier expected", lexer);
+                }
+                expect_ident = true;
+            }
+            _ => break,
+        }
+    }
+
+    if expect_ident {
+        err("Identifier expected", lexer);
+    } else if current.unwrap().unwrap() != Token::Colon{
+        err(": expected", lexer);
+    }
+    
+
+    // Handle variable type
+
+    match lexer.next() {
+        Some(Ok(Token::VarType(vt))) => Box::new(Node::Declare {
+            t: Box::from(vt),
+            children: vars,
+        }),
+        Some(Ok(Token::Array)) => Box::new(Node::Declare {
+            t: parse_array(lexer),
+            children: vars,
+        }),
+        _ => err("Type expected", lexer),
+    }
+}
+
+fn parse_array(lexer: &mut Lexer<Token>) -> Box<VariableType> {
+
+    expect_token(lexer, Token::LSqrBracket, "[");
+    
+    parse_array_dimension(lexer)
+}
+
+fn parse_array_dimension(lexer: &mut Lexer<Token>) -> Box<VariableType> {
+    
+    // The function calls itself recursively to create a nested array structure
+    
+    let mut v= Box::new(Array{t: Box::from(VariableType::Integer), lower: 0, upper: 0});
+    
+    if let Some(Token::IntegerLit(val)) = expect_token(lexer, Token::IntegerLit(0), "Integer") { v.lower = val }
+    
+    expect_token(lexer, Token::Colon, ":");
+    
+    if let Some(Token::IntegerLit(val)) = expect_token(lexer, Token::IntegerLit(0), "Integer") { v.upper = val }
+    
+    match lexer.next() {
+        Some(Ok(Token::Comma)) => {
+            Box::from(VariableType::Array( Box::from(Array {
+                t: parse_array_dimension(lexer),
+                lower: v.lower,
+                upper: v.upper,
+            })))
+        }
+        Some(Ok(Token::RSqrBracket)) => {
+            expect_token(lexer, Token::Of, "'Of'");
+            if let Some(Ok(Token::VarType(vt))) = lexer.next() {
+                Box::from(VariableType::Array( Box::from(Array {
+                    t: Box::from(vt),
+                    lower: v.lower,
+                    upper: v.upper,
+                })))
+            } else {
+                err("Type expected", lexer);
+            }
+        },
+        _ => err(" ']' or ',' expected", lexer),
+    }
+}
+
+fn expect_token(
+    lexer: & mut Lexer<Token>,
+    token: Token,
+    message: &str,
+) -> Option<Token> {
+    let next = lexer.next().unwrap().unwrap();
+    if std::mem::discriminant(&next) == std::mem::discriminant(&token) {
+        Some(next)
+    } else {
+        println!("{:?}", next);
+        err(&format!("{} expected", message), lexer);
+    }
+}
+fn err(message: &str, lexer: &mut Lexer<Token>) -> ! {
+    let mut cm = CodeMap::new();
+    let mut source = File::open(FILEPATH).unwrap();
+    let mut buf = String::new();
+    source.read_to_string(&mut buf).unwrap();
+    let file = cm.add_file("source".to_string(), buf);
+    let location = cm.look_up_span(
+        file.span
+            .subspan(lexer.span().start as u64, lexer.span().end as u64),
+    );
+    println!(
+        "{} at line {} col {}",
+        message,
+        location.begin.line + 1,
+        location.begin.column
+    );
+    panic!()
+}
 
 // pub fn parse(tokens: &mut [Token]) -> Vec<Box<Node>> {
 //     let mut nodes = Vec::<Box<Node>>::new();
@@ -255,47 +394,37 @@ use std::slice::Iter;
 //         }
 //     }
 // }
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub enum Node {
-//     Main {
-//         children: Vec<Box<Node>>,
-//     },
-//     Var(String),
-//     Int(i64),
-//     String(String),
-//     Declare {
-//         t: VariableType,
-//         // Identifiers
-//         children: Vec<String>,
-//     },
-//     Assignment {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>,
-//     },
-//     BinaryExpr {
-//         op: Operator,
-//         lhs: Box<Node>,
-//         rhs: Box<Node>,
-//     },
-//     Output {
-//         children: Vec<Box<Node>>,
-//     },
-//     Input {
-//         child: Box<Node>,
-//     },
-// }
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub enum VariableType {
-//     Integer,
-//     Real,
-//     Char,
-//     String,
-//     Date,
-//     Array(Box<VariableType>),
-//     Composite,
-// }
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum Node {
+    Main {
+        children: Vec<Box<Node>>,
+    },
+    Var(String),
+    Int(i64),
+    String(String),
+    Declare {
+        t: Box<VariableType>,
+        // Identifiers
+        children: Vec<String>,
+    },
+    Assignment {
+        lhs: Box<Node>,
+        rhs: Box<Node>,
+    },
+    BinaryExpr {
+        op: MOperator,
+        lhs: Box<Node>,
+        rhs: Box<Node>,
+    },
+    Output {
+        children: Vec<Box<Node>>,
+    },
+    Input {
+        child: Box<Node>,
+    },
+    Null,
+}
 //
 // fn op_precedence(t_type: &TokenType) -> i8 {
 //     match t_type {
