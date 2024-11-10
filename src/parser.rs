@@ -7,18 +7,31 @@ use std::fs::File;
 use std::io::Read;
 
 pub fn parse_file(lexer: & mut Lexer<Token>) -> Vec<Box<Node>> {
-    let mut nodes = Vec::<Box<Node>>::new();
-
-    while let Some(Ok(token)) = lexer.next() {
-        nodes.push(match token {
-            Token::Declare => parse_declare(lexer),
-            _ => Box::new(Node::Null),
-        })
+    let mut nodes= Vec::new();
+    let mut main_children = Vec::<Box<Node>>::new();
+    
+    
+    loop {
+        match lexer.next() {
+            Some(Ok(Token::Procedure)) => unimplemented!(),
+            Some(Ok(Token::Function)) => unimplemented!(),
+            Some(Ok(Token::Class)) => unimplemented!(),
+            Some(Ok(token)) => main_children.push(parse_line(token, lexer)),
+            _ => break,
+        }
     }
-
+    
+    nodes.push(Box::from(Node::Main {children: main_children}));
     println!("{:?}", nodes);
 
     nodes
+}
+
+pub fn parse_line( token: Token, lexer: &mut Lexer<Token>) -> Box<Node> {
+        match token {
+            Token::Declare => parse_declare(lexer),
+            _ => Box::new(Node::Null),
+        }
 }
 
 fn parse_declare(lexer: &mut Lexer<Token>) -> Box<Node> {
@@ -110,7 +123,7 @@ fn parse_array_dimension(lexer: &mut Lexer<Token>) -> Box<VariableType> {
 }
 
 fn expect_token(
-    lexer: & mut Lexer<Token>,
+    lexer: &mut Lexer<Token>,
     token: Token,
     message: &str,
 ) -> Option<Token> {
