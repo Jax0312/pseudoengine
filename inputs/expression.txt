@@ -1,5 +1,6 @@
 DECLARE num, num2 : INTEGER
 DECLARE arr : ARRAY[0:10, 1:2] OF INTEGER
+num + 12 * 5
 INPUT num2 // This is a cmmment hehe
 num <- num2 * 5 + num2 + 10.555 + .2
 OUTPUT num

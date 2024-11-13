@@ -1,3 +1,5 @@
+use crate::tokens::TToken;
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableType {
@@ -19,8 +21,19 @@ pub struct Array {
     pub upper: i64,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum MOperator {Plus, Minus, Mul, Div, IntDiv, Mod}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Identifier {
+    pub name: String,
+    pub indices: Option<Vec<usize>>,
+}
 
-#[derive(Debug, PartialEq)]
-pub enum Comparator {Eq, Neq, Gt, Lt, Gte, Lte }
+#[derive(Clone, Debug, PartialEq)]
+pub struct Position {
+    pub line: usize,
+    pub col: usize,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Token {
+    pub t: TToken,
+    pub pos: Position,
+}
