@@ -1,5 +1,7 @@
+use std::iter::Peekable;
 use crate::enums::{Identifier, Position, Token, VariableType};
 use std::str::Chars;
+use std::vec::IntoIter;
 use crate::tokens::TToken;
 
 pub fn lexer(buf: &mut Chars) -> Vec<Token> {
@@ -111,12 +113,74 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
         }
     }
     
+    // Second pass to reduce multiple newline and identify array 
+    let mut temp_tokens = tokens.into_iter().peekable();
+    tokens = vec![];
+    while let Some(token ) = temp_tokens.peek() {
+        tokens.push(temp_tokens.next().unwrap());
+        match tokens.last().unwrap().clone().t {
+            TToken::Newline => {
+                while temp_tokens.peek().is_some() && temp_tokens.peek().unwrap().t == TToken::Newline {
+                    temp_tokens.next();
+                }
+            },
+            TToken::Identifier(ident) => {
+                if temp_tokens.peek().is_some() && temp_tokens.peek().unwrap().t == TToken::LSqrBracket {
+                    let mut indices = vec![];
+                    temp_tokens.next();
+                    loop {
+                        if let TToken::IntegerLit(val) = expect_token(&mut temp_tokens, TToken::IntegerLit(0), "Integer").unwrap().t {
+                            if let Ok(index) = usize::try_from(val) {
+                               indices.push(index);
+                            } else {
+                                err("Unsigned integer expected", &tokens.last().unwrap().pos);
+                            }
+
+                            if temp_tokens.peek().is_none() {
+                                err("] expected", &tokens.last().unwrap().pos);
+                            }
+
+                            match temp_tokens.next().unwrap().t {
+                                TToken::RSqrBracket => break,
+                                TToken::Comma => (),
+                                _ => err("] or , expected", &tokens.last().unwrap().pos),  
+                            };
+                            
+                        }
+                    }
+                    let token = Token {
+                        t: TToken::Identifier(Identifier {name: ident.name, indices: Some(indices)}),
+                        pos: tokens.pop().unwrap().pos
+                    };
+                    
+                    tokens.push(token);
+                    
+                }
+            },
+            _ => ()
+        }
+    }
+
     for token in tokens.clone() {
         print!("{:?}, ", token.t);
     }
     println!();
 
     tokens
+}
+
+fn expect_token(
+    lexer: &mut Peekable<IntoIter<Token>>,
+    token: TToken,
+    message: &str,
+) -> Option<Token> {
+    let next = lexer.next().unwrap();
+    if std::mem::discriminant(&next.t) == std::mem::discriminant(&token) {
+        Some(next)
+    } else {
+        println!("{:?}", next);
+        err(&format!("{} expected", message), &next.pos);
+    }
 }
 
 fn match_symbol(sym: String) -> TToken {
