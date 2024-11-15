@@ -21,13 +21,7 @@ pub struct Array {
     pub upper: i64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Identifier {
-    pub name: String,
-    pub indices: Option<Vec<usize>>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Position {
     pub line: usize,
     pub col: usize,
@@ -44,9 +38,35 @@ pub enum Node {
     Main {
         children: Vec<Box<Node>>,
     },
-    Var(Token),
-    // Int(i64),
-    // String(String),
+    Int {
+        val: i64,
+        pos: Position,
+    },
+    String {
+        val: String,
+        pos: Position,
+    },
+    Boolean {
+        val: bool,
+        pos: Position,
+    },
+    Real{
+        val: f64,
+        pos: Position,
+    },
+    Var {
+        name: String,
+        pos: Position,
+    },
+    Op {
+        op: String,
+        pos: Position,
+    },
+    ArrayVar {
+        name: String,
+        indices: Vec<Box<Node>>,
+        pos: Position,
+    },
     Declare {
         t: Box<VariableType>,
         // Identifiers
@@ -56,12 +76,11 @@ pub enum Node {
         lhs: Box<Node>,
         rhs: Box<Node>,
     },
-    // BinaryExpr {
-    //     op: MOperator,
-    //     lhs: Box<Node>,
-    //     rhs: Box<Node>,
-    // },
-    Expression(Vec<Token>),
+    FunctionCall {
+        name: String,
+        params: Vec<Box<Node>>
+    },
+    Expression(Vec<Box<Node>>),
     Output {
         children: Vec<Box<Node>>,
     },

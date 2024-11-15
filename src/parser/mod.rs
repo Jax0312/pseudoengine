@@ -7,6 +7,7 @@ use crate::tokens::TToken;
 
 mod parse_declare;
 pub mod parse_expr;
+mod parse_identifier;
 
 pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
     let mut nodes = Vec::new();
@@ -42,13 +43,14 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
 }
 
 fn parse_assign(lexer: &mut Lexer) -> Box<Node> {
-    let lhs = Box::from(Var(lexer.next().unwrap()));
+    let Token {t: TToken::Identifier(name), pos} = lexer.next().unwrap() else { unreachable!() };
+    let lhs = Box::from(Var { name, pos });
     
     match lexer.next().unwrap() {
         Token { t: TToken::Assignment, pos: _ } => {
             Box::from(Assignment {
                 lhs,
-                rhs: parse_expression(lexer),
+                rhs: parse_expression(lexer, &[]).0,
             })
         },
         _ => {

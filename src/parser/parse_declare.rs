@@ -17,7 +17,7 @@ pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {
         current = lexer.next();
         match current.clone().unwrap() {
             Token {t: TToken::Identifier(ident), pos: _ } => {
-                vars.push(ident.name);
+                vars.push(ident);
                 expect_ident = false;
             }
             Token {t: TToken::Comma, pos } => {

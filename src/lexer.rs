@@ -1,9 +1,9 @@
 use std::iter::Peekable;
-use crate::enums::{Identifier, Position, Token, VariableType};
+use crate::enums::{Position, Token, VariableType};
 use std::str::Chars;
 use std::vec::IntoIter;
 use crate::tokens::TToken;
-use crate::utils::{err, expect_token};
+use crate::utils::{err};
 
 pub type Lexer = Peekable<IntoIter<Token>>;
 
@@ -23,7 +23,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                 c_pos.col = 1;
                 tokens.push(Token {
                     t: TToken::Newline,
-                    pos: c_pos.clone(),
+                    pos: c_pos,
                 })
             }
             '0'..='9' => {
@@ -42,11 +42,11 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                 match dot_count {
                     0 => tokens.push(Token {
                         t: TToken::IntegerLit(number.parse::<i64>().unwrap()),
-                        pos: c_pos.clone(),
+                        pos: c_pos,
                     }),
                     1 => tokens.push(Token {
                         t: TToken::RealLit(number.parse::<f64>().unwrap()),
-                        pos: c_pos.clone(),
+                        pos: c_pos,
                     }),
                     _ => {
                         println!("{:?}", tokens);
@@ -77,7 +77,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                         buf.next();
                     }
                 } else {
-                    tokens.push(Token {t: TToken::Operator("/".to_string()), pos: c_pos.clone()})
+                    tokens.push(Token {t: TToken::Operator("/".to_string()), pos: c_pos})
                 }
             },
             '"' => {
@@ -91,7 +91,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                     lit.push(c);
                 }
                 
-                tokens.push(Token {t: TToken::StringLit(lit), pos: c_pos.clone()});
+                tokens.push(Token {t: TToken::StringLit(lit), pos: c_pos});
                 
             }
             _ => {
@@ -128,39 +128,6 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
             TToken::Newline => {
                 while temp_tokens.peek().is_some() && temp_tokens.peek().unwrap().t == TToken::Newline {
                     temp_tokens.next();
-                }
-            },
-            TToken::Identifier(ident) => {
-                if temp_tokens.peek().is_some() && temp_tokens.peek().unwrap().t == TToken::LSqrBracket {
-                    let mut indices = vec![];
-                    temp_tokens.next();
-                    loop {
-                        if let TToken::IntegerLit(val) = expect_token(&mut temp_tokens, &[TToken::IntegerLit(0)], "Integer").unwrap().t {
-                            if let Ok(index) = usize::try_from(val) {
-                               indices.push(index);
-                            } else {
-                                err("Unsigned integer expected", &tokens.last().unwrap().pos);
-                            }
-
-                            if temp_tokens.peek().is_none() {
-                                err("] expected", &tokens.last().unwrap().pos);
-                            }
-
-                            match temp_tokens.next().unwrap().t {
-                                TToken::RSqrBracket => break,
-                                TToken::Comma => (),
-                                _ => err("] or , expected", &tokens.last().unwrap().pos),  
-                            };
-                            
-                        }
-                    }
-                    let token = Token {
-                        t: TToken::Identifier(Identifier {name: ident.name, indices: Some(indices)}),
-                        pos: tokens.pop().unwrap().pos
-                    };
-                    
-                    tokens.push(token);
-                    
                 }
             },
             _ => ()
@@ -257,10 +224,7 @@ fn match_word(word: String) -> TToken {
         "REAL" => TToken::VarType(VariableType::Real),
         "STRING" => TToken::VarType(VariableType::String),
         "DATE" => TToken::VarType(VariableType::Date),
-        _ => TToken::Identifier(Identifier {
-            name: word,
-            indices: None,
-        }),
+        _ => TToken::Identifier(word),
     }
     
 }

@@ -1,6 +1,7 @@
 DECLARE num, num2 : INTEGER
 DECLARE arr : ARRAY[0:10, 1:2] OF INTEGER
 num + 12 * 5
+num2 <- LENGTH(1, arr[5], 10 + 2) + 5
 // INPUT num2
 num <- num2 * 5 + num2 + 10.555 + 0.2
 // OUTPUT num

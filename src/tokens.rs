@@ -1,4 +1,4 @@
-use crate::enums::{Identifier, VariableType};
+use crate::enums::{VariableType};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TToken {
@@ -78,7 +78,7 @@ pub enum TToken {
     WriteFile,
     Newline,
     
-    Identifier(Identifier),
+    Identifier(String),
     
     EOF,
     
