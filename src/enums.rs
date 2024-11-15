@@ -58,6 +58,11 @@ pub enum Node {
         name: String,
         pos: Position,
     },
+    Reference(Box<Node>),
+    Dereference(Box<Node>),
+    Composite {
+        children: Vec<Box<Node>>,
+    },
     Op {
         op: String,
         pos: Position,

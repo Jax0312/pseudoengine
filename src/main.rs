@@ -1,5 +1,3 @@
-#![feature(iter_advance_by)]
-
 use std::{fs::File, io::Read};
 
 mod executor;

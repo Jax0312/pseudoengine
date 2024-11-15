@@ -19,12 +19,14 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                 // Whitespace
             }
             '\n' => {
-                c_pos.line += 1;
-                c_pos.col = 1;
+                // Minus 1 because newline is invisible to user
+                c_pos.col -= 1;
                 tokens.push(Token {
                     t: TToken::Newline,
                     pos: c_pos,
-                })
+                });
+                c_pos.line += 1;
+                c_pos.col = 0;
             }
             '0'..='9' => {
                 let mut number = String::new();

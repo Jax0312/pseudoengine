@@ -1,4 +1,4 @@
-use crate::enums::{Node, Token};
+use crate::enums::{Node};
 use crate::lexer::Lexer;
 use crate::parser::parse_identifier::parse_identifier;
 use crate::tokens::TToken;
@@ -24,93 +24,93 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
     let mut exit_token = None;
 
     loop {
-        if let Some(Token {
-            t: TToken::Identifier(_),
-            pos: _,
-        }) = lexer.peek()
-        {
-            output.push(*parse_identifier(lexer));
-            last_token_is_pm = false;
-        } else {
-            let token = lexer.next().unwrap();
-            if stop.contains(&token.t) {
-                exit_token = Some(token.t);
-                break;
-            }
-            match token.t {
-                TToken::IntegerLit(val)  => {
-                    output.push(Node::Int {val, pos: token.pos});
-                    last_token_is_pm = false;
-                }
-                TToken::RealLit(val)  => {
-                    output.push(Node::Real {val, pos: token.pos});
-                    last_token_is_pm = false;
-                }
-                TToken::StringLit(val)  => {
-                    output.push(Node::String {val, pos: token.pos});
-                    last_token_is_pm = false;
-                }
-                TToken::BoolLit(val)  => {
-                    output.push(Node::Boolean {val, pos: token.pos});
-                    last_token_is_pm = false;
-                }
-                TToken::Operator(ref op) => {
-                    let mut _op = op.clone();
+        match lexer.peek().unwrap().t {
+            TToken::Caret | TToken::Identifier(_) => {
+                output.push(*parse_identifier(lexer));
+                last_token_is_pm = false;
+            },
+            _ => {
 
-                    if last_token_is_pm && (op == "+" || op == "-") {
-                        _op = format!("_{}", op);
+                let token = lexer.next().unwrap();
+                if stop.contains(&token.t) {
+                    exit_token = Some(token.t);
+                    break;
+                }
+                match token.t {
+                    TToken::IntegerLit(val)  => {
+                        output.push(Node::Int {val, pos: token.pos});
+                        last_token_is_pm = false;
                     }
+                    TToken::RealLit(val)  => {
+                        output.push(Node::Real {val, pos: token.pos});
+                        last_token_is_pm = false;
+                    }
+                    TToken::StringLit(val)  => {
+                        output.push(Node::String {val, pos: token.pos});
+                        last_token_is_pm = false;
+                    }
+                    TToken::BoolLit(val)  => {
+                        output.push(Node::Boolean {val, pos: token.pos});
+                        last_token_is_pm = false;
+                    }
+                    TToken::Operator(ref op) => {
+                        let mut _op = op.clone();
 
-                    last_token_is_pm = op == "+" || op == "-";
+                        if last_token_is_pm && (op == "+" || op == "-") {
+                            _op = format!("_{}", op);
+                        }
 
-                    while let Some(top) = operators.last() {
-                        if let Node::Op {op:top_op, pos: _} = top.clone() {
-                            let top_op_info = get_operator_precedence(&top_op);
-                            let op_info = get_operator_precedence(&_op);
+                        last_token_is_pm = op == "+" || op == "-";
 
-                            if (op_info.associativity == Associativity::Left
-                                && op_info.precedence <= top_op_info.precedence)
-                                || (op_info.associativity == Associativity::Right
+                        while let Some(top) = operators.last() {
+                            if let Node::Op {op:top_op, pos: _} = top.clone() {
+                                let top_op_info = get_operator_precedence(&top_op);
+                                let op_info = get_operator_precedence(&_op);
+
+                                if (op_info.associativity == Associativity::Left
+                                    && op_info.precedence <= top_op_info.precedence)
+                                    || (op_info.associativity == Associativity::Right
                                     && op_info.precedence < top_op_info.precedence)
-                            {
-                                output.push(operators.pop().unwrap());
+                                {
+                                    output.push(operators.pop().unwrap());
+                                } else {
+                                    break;
+                                }
                             } else {
                                 break;
                             }
-                        } else {
-                            break;
                         }
+                        operators.push(Node::Op {
+                            op: _op,
+                            pos: token.clone().pos,
+                        });
                     }
-                    operators.push(Node::Op {
-                        op: _op,
-                        pos: token.clone().pos,
-                    });
-                }
 
-                TToken::LParen => {
-                    last_token_is_pm = false;
-                    operators.push(Node::Op {
-                        op: "(".to_string(),
-                        pos: token.clone().pos,
-                    });
-                }
-                TToken::RParen => {
-                    last_token_is_pm = false;
-                    while let Some(top) = operators.pop() {
-                        match &top {
-                            Node::Op {op, pos: _ } => {
-                                if op == "(" {
-                                    break;
+                    TToken::LParen => {
+                        last_token_is_pm = false;
+                        operators.push(Node::Op {
+                            op: "(".to_string(),
+                            pos: token.clone().pos,
+                        });
+                    }
+                    TToken::RParen => {
+                        last_token_is_pm = false;
+                        while let Some(top) = operators.pop() {
+                            match &top {
+                                Node::Op {op, pos: _ } => {
+                                    if op == "(" {
+                                        break;
+                                    }
+                                    output.push(top);
                                 }
-                                output.push(top);
+                                _ => unreachable!()
                             }
-                            _ => unreachable!()
                         }
                     }
+                    TToken::Newline => break,
+                    _ => err("Invalid token", &token.pos),
                 }
-                TToken::Newline => break,
-                _ => err("Invalid token", &token.pos),
-            }
+            },
         }
     }
 
