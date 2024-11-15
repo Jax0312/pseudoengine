@@ -3,6 +3,9 @@ use crate::enums::{Identifier, Position, Token, VariableType};
 use std::str::Chars;
 use std::vec::IntoIter;
 use crate::tokens::TToken;
+use crate::utils::{err, expect_token};
+
+pub type Lexer = Peekable<IntoIter<Token>>;
 
 pub fn lexer(buf: &mut Chars) -> Vec<Token> {
     let mut c_pos = Position { line: 1, col: 0 };
@@ -113,10 +116,13 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
         }
     }
     
+    // EOF token added to signify source file end for error reporting purpose
+    tokens.push( Token { t: TToken::EOF, pos: c_pos } );
+    
     // Second pass to reduce multiple newline and identify array 
     let mut temp_tokens = tokens.into_iter().peekable();
     tokens = vec![];
-    while let Some(token ) = temp_tokens.peek() {
+    while temp_tokens.peek().is_some() {
         tokens.push(temp_tokens.next().unwrap());
         match tokens.last().unwrap().clone().t {
             TToken::Newline => {
@@ -129,7 +135,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                     let mut indices = vec![];
                     temp_tokens.next();
                     loop {
-                        if let TToken::IntegerLit(val) = expect_token(&mut temp_tokens, TToken::IntegerLit(0), "Integer").unwrap().t {
+                        if let TToken::IntegerLit(val) = expect_token(&mut temp_tokens, &[TToken::IntegerLit(0)], "Integer").unwrap().t {
                             if let Ok(index) = usize::try_from(val) {
                                indices.push(index);
                             } else {
@@ -160,7 +166,6 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
             _ => ()
         }
     }
-
     for token in tokens.clone() {
         print!("{:?}, ", token.t);
     }
@@ -169,19 +174,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
     tokens
 }
 
-fn expect_token(
-    lexer: &mut Peekable<IntoIter<Token>>,
-    token: TToken,
-    message: &str,
-) -> Option<Token> {
-    let next = lexer.next().unwrap();
-    if std::mem::discriminant(&next.t) == std::mem::discriminant(&token) {
-        Some(next)
-    } else {
-        println!("{:?}", next);
-        err(&format!("{} expected", message), &next.pos);
-    }
-}
+
 
 fn match_symbol(sym: String) -> TToken {
     
@@ -270,9 +263,4 @@ fn match_word(word: String) -> TToken {
         }),
     }
     
-}
-
-fn err(message: &str, pos: &Position) -> ! {
-    println!("{} at line {} col {}", message, pos.line, pos.col);
-    panic!()
 }

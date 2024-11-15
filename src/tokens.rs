@@ -80,6 +80,8 @@ pub enum TToken {
     
     Identifier(Identifier),
     
+    EOF,
+    
     Unknown
     
 }

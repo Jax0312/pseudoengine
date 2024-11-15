@@ -37,3 +37,36 @@ pub struct Token {
     pub t: TToken,
     pub pos: Position,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum Node {
+    Main {
+        children: Vec<Box<Node>>,
+    },
+    Var(Token),
+    // Int(i64),
+    // String(String),
+    Declare {
+        t: Box<VariableType>,
+        // Identifiers
+        children: Vec<String>,
+    },
+    Assignment {
+        lhs: Box<Node>,
+        rhs: Box<Node>,
+    },
+    // BinaryExpr {
+    //     op: MOperator,
+    //     lhs: Box<Node>,
+    //     rhs: Box<Node>,
+    // },
+    Expression(Vec<Token>),
+    Output {
+        children: Vec<Box<Node>>,
+    },
+    Input {
+        child: Box<Node>,
+    },
+    Null,
+}
