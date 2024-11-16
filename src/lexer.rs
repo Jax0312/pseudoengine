@@ -7,6 +7,8 @@ use crate::utils::{err};
 
 pub type Lexer = Peekable<IntoIter<Token>>;
 
+// TODO: incorrect pos col reporting
+
 pub fn lexer(buf: &mut Chars) -> Vec<Token> {
     let mut c_pos = Position { line: 1, col: 0 };
     let mut tokens = Vec::new();
