@@ -106,5 +106,10 @@ pub enum Node {
     Input {
         child: Box<Node>,
     },
+    OpenFile {
+        filename: Box<Node>,
+        mode: TToken,
+    },
+    CloseFile(Box<Node>),
     Null,
 }

@@ -30,7 +30,7 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                             let (exp, res) =
                                 parse_expression(lexer, &[TToken::Comma, TToken::RSqrBracket]);
                             indices.push(exp);
-                            if res.is_some() && res.unwrap() == TToken::RSqrBracket {
+                            if res.t == TToken::RSqrBracket {
                                 break;
                             }
                         }
@@ -49,7 +49,7 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                             let (exp, res) =
                                 parse_expression(lexer, &[TToken::Comma, TToken::RParen]);
                             params.push(exp);
-                            if res.is_some() && res.unwrap() == TToken::RParen {
+                            if res.t == TToken::RParen {
                                 break;
                             }
                         }

@@ -33,7 +33,7 @@ pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     lexer.next();
     let iter;
     
-    if let Some(Token {t: TToken::Identifier(name), pos}) = expect_token(lexer, &[TToken::Identifier("".to_string())], "Identifier") {
+    if let Token {t: TToken::Identifier(name), pos} = expect_token(lexer, &[TToken::Identifier("".to_string())], "Identifier") {
         iter = Box::from(Node::Var {name, pos})
     } else { unreachable!()}
     expect_token(lexer, &[TToken::Assignment], "<- expected");
@@ -43,7 +43,7 @@ pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     
     let mut body = Vec::new();
     let step;
-    if let Some(TToken::Step) =  end_token {
+    if end_token.t == TToken::Step {
         step = parse_expression(lexer, &[]).0;
     } else {
         step = Box::from(Node::Null)

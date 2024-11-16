@@ -1,4 +1,4 @@
-use crate::enums::{Node};
+use crate::enums::{Node, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_identifier::parse_identifier;
 use crate::tokens::TToken;
@@ -16,12 +16,12 @@ struct Operator {
 }
 
 // parse expression ends on newline or on specified token. The exit token is returned
-pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Option<TToken>) {
+pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token) {
     let mut output: Vec<Node> = Vec::new();
     let mut operators: Vec<Node> = Vec::new();
     // Previous token is plus or minus
     let mut last_token_is_pm = true;
-    let mut exit_token = None;
+    let exit_token;
 
     loop {
         match lexer.peek().unwrap().t {
@@ -33,7 +33,7 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
 
                 let token = lexer.next().unwrap();
                 if stop.contains(&token.t) {
-                    exit_token = Some(token.t);
+                    exit_token = token.clone();
                     if output.is_empty() {
                         err("Expression expected", &token.pos);
                     }
@@ -114,6 +114,7 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
                         }
                     }
                     TToken::Newline | TToken::EOF => {
+                        exit_token = token.clone();
                         if output.is_empty() {
                             err("Expression expected", &token.pos);
                         }

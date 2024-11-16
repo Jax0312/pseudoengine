@@ -8,7 +8,7 @@ pub fn expect_token(
     lexer: &mut Lexer,
     tokens: &[TToken],
     message: &str,
-) -> Option<Token> {
+) -> Token {
     
     if let Some(next) = lexer.next() {
         if next.t == TToken::EOF {
@@ -16,7 +16,7 @@ pub fn expect_token(
         }
         for token in tokens {
             if std::mem::discriminant(&next.t) == std::mem::discriminant(token) {
-                return Some(next);
+                return next;
             }
         }
         err(&format!("{} expected", message), &next.pos);

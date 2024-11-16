@@ -64,11 +64,11 @@ fn parse_array_dimension(lexer: &mut Lexer) -> Box<VariableType> {
 
     let mut v= Box::new(Array{t: Box::from(VariableType::Integer), lower: 0, upper: 0});
 
-    if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").unwrap().t { v.lower = val}
+    if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").t { v.lower = val}
 
     expect_token(lexer, &[TToken::Colon], ":");
 
-    if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").unwrap().t { v.upper = val}
+    if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").t { v.upper = val}
 
     match lexer.next().unwrap() {
         Token {t: TToken::Comma, pos: _} => {

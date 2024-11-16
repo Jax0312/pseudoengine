@@ -1,1 +1,2 @@
-OUTPUT
+OPENFILE "Hey" FOR RANDOM
+CLOSEFILE "Hey" & ".txt"
