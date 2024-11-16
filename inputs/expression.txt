@@ -1,1 +1,2 @@
-i <- jo()
+GETRECORD "Hello", jo
+PUTRECORD "Hello", jo

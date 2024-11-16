@@ -46,7 +46,7 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                         lexer.next();
                         let mut params = Vec::new();
                         
-                        if let Some(Token {t: TToken::RParen, pos}) = lexer.peek() {
+                        if let Some(Token {t: TToken::RParen, pos: _}) = lexer.peek() {
                             // No need to parse expr
                             lexer.next();
                         } else {

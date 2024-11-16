@@ -84,3 +84,52 @@ pub fn parse_write_file(lexer: &mut Lexer) -> Box<Node> {
         expr: parse_expression(lexer, &[]).0,
     })
 }
+
+pub fn parse_seek_file(lexer: &mut Lexer) -> Box<Node> {
+    // skip SEEK token
+    lexer.next();
+    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
+    if stop_token.t != TToken::Comma {
+        err("',' expected", &stop_token.pos);
+    }
+    Box::from(Node::SeekFile {
+        filename,
+        expr: parse_expression(lexer, &[]).0,
+    })
+}
+
+pub fn parse_get_record(lexer: &mut Lexer) -> Box<Node> {
+    // skip GETRECORD token
+    lexer.next();
+    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
+    if stop_token.t != TToken::Comma {
+        err("',' expected", &stop_token.pos);
+    }
+    let var= parse_identifier(lexer);
+    match *var {
+        Node::Var {..} | Node::ArrayVar {..} => (),
+        _ => err("Identifier expected", &stop_token.pos),
+    }
+    Box::from(Node::GetRecord {
+        filename,
+        var,
+    })
+}
+
+pub fn parse_put_record(lexer: &mut Lexer) -> Box<Node> {
+    // skip PUTRECORD token
+    lexer.next();
+    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
+    if stop_token.t != TToken::Comma {
+        err("',' expected", &stop_token.pos);
+    }
+    let var= parse_identifier(lexer);
+    match *var {
+        Node::Var {..} | Node::ArrayVar {..} => (),
+        _ => err("Identifier expected", &stop_token.pos),
+    }
+    Box::from(Node::PutRecord {
+        filename,
+        var,
+    })
+}

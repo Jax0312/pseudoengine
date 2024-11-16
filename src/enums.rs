@@ -119,5 +119,17 @@ pub enum Node {
         filename: Box<Node>,
         expr: Box<Node>,
     },
+    SeekFile {
+        filename: Box<Node>,
+        expr: Box<Node>,
+    },
+    PutRecord {
+        filename: Box<Node>,
+        var: Box<Node>,
+    },
+    GetRecord {
+        filename: Box<Node>,
+        var: Box<Node>,
+    },
     Null,
 }
