@@ -3,7 +3,7 @@ use crate::lexer::Lexer;
 use crate::parser::parse_declare::parse_declare;
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_identifier::parse_identifier;
-use crate::parser::parse_loop::parse_while;
+use crate::parser::parse_loop::{parse_for, parse_while};
 use crate::tokens::TToken;
 
 mod parse_declare;
@@ -38,6 +38,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::Declare => parse_declare(lexer),
         TToken::Identifier(_) => parse_assign(lexer),
         TToken::While => parse_while(lexer),
+        TToken::For => parse_for(lexer),
         _ => {
             lexer.next();
             Box::new(Node::Null)

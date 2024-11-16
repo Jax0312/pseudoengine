@@ -68,8 +68,9 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                 }
                 
                 tokens.push(Token {
-                    t: match_word(word),
-                    pos: c_pos.clone(),
+                    t: match_word(word.clone()),
+                    // Point back to start of word
+                    pos: Position {line: c_pos.line, col: c_pos.col - word.len() + 1},
                 })
             },
             '/' => {

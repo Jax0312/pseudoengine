@@ -36,6 +36,9 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
                 let token = lexer.next().unwrap();
                 if stop.contains(&token.t) {
                     exit_token = Some(token.t);
+                    if output.is_empty() {
+                        err("Expression expected", &token.pos);
+                    }
                     break;
                 }
                 match token.t {
@@ -109,7 +112,12 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
                             }
                         }
                     }
-                    TToken::Newline | TToken::EOF => break,
+                    TToken::Newline | TToken::EOF => {
+                        if output.is_empty() {
+                            err("Expression expected", &token.pos);
+                        }
+                        break;
+                    },
                     _ => err("Invalid token", &token.pos),
                 }
             },
@@ -128,7 +136,7 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
             _ => unreachable!()
         }
     }
-
+    
     (Box::from(Node::Expression(output.into_iter().map(Box::from).collect::<Vec<Box<Node>>>())), exit_token)
 }
 
