@@ -111,5 +111,13 @@ pub enum Node {
         mode: TToken,
     },
     CloseFile(Box<Node>),
+    ReadFile {
+        filename: Box<Node>,
+        var: Box<Node>,
+    },
+    WriteFile {
+        filename: Box<Node>,
+        expr: Box<Node>,
+    },
     Null,
 }

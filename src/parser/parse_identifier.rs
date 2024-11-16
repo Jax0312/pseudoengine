@@ -45,14 +45,21 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                         // Skip '('
                         lexer.next();
                         let mut params = Vec::new();
-                        loop {
-                            let (exp, res) =
-                                parse_expression(lexer, &[TToken::Comma, TToken::RParen]);
-                            params.push(exp);
-                            if res.t == TToken::RParen {
-                                break;
-                            }
+                        
+                        if let Some(Token {t: TToken::RParen, pos}) = lexer.peek() {
+                            // No need to parse expr
+                            lexer.next();
+                        } else {
+                            loop {
+                                let (exp, res) =
+                                    parse_expression(lexer, &[TToken::Comma, TToken::RParen]);
+                                params.push(exp);
+                                if res.t == TToken::RParen {
+                                    break;
+                                }
+                            }                            
                         }
+                        
                         vars.push(Box::from(Node::FunctionCall { name, params }))
                     }
                     _ => {

@@ -3,7 +3,7 @@ use crate::lexer::Lexer;
 use crate::parser::parse_declare::parse_declare;
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_identifier::parse_identifier;
-use crate::parser::parse_io::{parse_close_file, parse_input, parse_open_file, parse_output};
+use crate::parser::parse_io::{parse_close_file, parse_input, parse_open_file, parse_output, parse_read_file, parse_write_file};
 use crate::parser::parse_loop::{parse_for, parse_while};
 use crate::tokens::TToken;
 
@@ -29,7 +29,7 @@ pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
     nodes.push(Box::from(Node::Main {
         children: main_children,
     }));
-    
+
     println!("\nAST\n{:?}", nodes);
 
     nodes
@@ -45,6 +45,8 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::Output => parse_output(lexer),
         TToken::OpenFile => parse_open_file(lexer),
         TToken::CloseFile => parse_close_file(lexer),
+        TToken::ReadFile => parse_read_file(lexer),
+        TToken::WriteFile => parse_write_file(lexer),
         _ => {
             lexer.next();
             Box::new(Node::Null)
@@ -53,7 +55,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
 }
 
 fn parse_assign(lexer: &mut Lexer) -> Box<Node> {
-    
+
     let lhs = parse_identifier(lexer);
     match lexer.next().unwrap() {
         Token { t: TToken::Assignment, pos: _ } => {

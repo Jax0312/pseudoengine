@@ -1,6 +1,7 @@
 use crate::enums::{Node, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_expr::parse_expression;
+use crate::parser::parse_identifier::parse_identifier;
 use crate::tokens::TToken;
 use crate::utils::{err, expect_token};
 
@@ -51,4 +52,35 @@ pub fn parse_close_file(lexer: &mut Lexer) -> Box<Node> {
     // skip CLOSEFILE token
     lexer.next();
     Box::from(Node::CloseFile(parse_expression(lexer, &[]).0))
+}
+
+pub fn parse_read_file(lexer: &mut Lexer) -> Box<Node> {
+    // skip READFILE token
+    lexer.next();
+    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
+    if stop_token.t != TToken::Comma {
+        err("',' expected", &stop_token.pos);
+    }
+    let var= parse_identifier(lexer);
+    match *var {
+        Node::Var {..} | Node::ArrayVar {..} => (),
+        _ => err("Identifier expected", &stop_token.pos),
+    }
+    Box::from(Node::ReadFile {
+        filename,
+        var,
+    })
+}
+
+pub fn parse_write_file(lexer: &mut Lexer) -> Box<Node> {
+    // skip WRITEFILE token
+    lexer.next();
+    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
+    if stop_token.t != TToken::Comma {
+        err("',' expected", &stop_token.pos);
+    }
+    Box::from(Node::WriteFile {
+        filename,
+        expr: parse_expression(lexer, &[]).0,
+    })
 }
