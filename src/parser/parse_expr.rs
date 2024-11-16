@@ -10,6 +10,8 @@ enum Associativity {
     Right,
 }
 
+// TODO: fix brackets, unreachable reached, add string concat op
+
 struct Operator {
     precedence: u8,
     associativity: Associativity,
@@ -107,7 +109,7 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
                             }
                         }
                     }
-                    TToken::Newline => break,
+                    TToken::Newline | TToken::EOF => break,
                     _ => err("Invalid token", &token.pos),
                 }
             },

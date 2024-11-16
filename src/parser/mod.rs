@@ -3,11 +3,13 @@ use crate::lexer::Lexer;
 use crate::parser::parse_declare::parse_declare;
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_identifier::parse_identifier;
+use crate::parser::parse_loop::parse_while;
 use crate::tokens::TToken;
 
 mod parse_declare;
 pub mod parse_expr;
 mod parse_identifier;
+mod parse_loop;
 
 pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
     let mut nodes = Vec::new();
@@ -35,6 +37,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
     match lexer.peek().unwrap().t {
         TToken::Declare => parse_declare(lexer),
         TToken::Identifier(_) => parse_assign(lexer),
+        TToken::While => parse_while(lexer),
         _ => {
             lexer.next();
             Box::new(Node::Null)

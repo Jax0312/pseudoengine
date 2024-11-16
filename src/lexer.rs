@@ -119,6 +119,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
     }
     
     // EOF token added to signify source file end for error reporting purpose
+    c_pos.col += 1;
     tokens.push( Token { t: TToken::EOF, pos: c_pos } );
     
     // Second pass to reduce multiple newline and identify array 

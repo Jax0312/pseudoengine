@@ -1,12 +1,5 @@
-james^.zero[5] <- 1
-num <- ^
-DECLARE num, num2 : INTEGER
-DECLARE arr : ARRAY[0:10, 1:2] OF INTEGER
-num + 12 * 5
-num2 <- LENGTH(5) + 5
-// INPUT num2
-num <- num2 * 5 + num2 + 10.555 + 0.2
-// OUTPUT num
-
-
-// THis is a comment
+FOR i <- 1 TO 10 STEP 2
+    FOR j <- -5 TO 5
+    
+    NEXT j
+NEXT i

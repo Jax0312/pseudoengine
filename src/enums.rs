@@ -72,6 +72,10 @@ pub enum Node {
         indices: Vec<Box<Node>>,
         pos: Position,
     },
+    Range {
+        start: Box<Node>,
+        end: Box<Node>,
+    },
     Declare {
         t: Box<VariableType>,
         // Identifiers
@@ -84,6 +88,16 @@ pub enum Node {
     FunctionCall {
         name: String,
         params: Vec<Box<Node>>
+    },
+    While {
+        cond: Box<Node>,
+        body: Vec<Box<Node>>,
+    },
+    For {
+        iter: Box<Node>,
+        range: Box<Node>,
+        step: Box<Node>,
+        body: Vec<Box<Node>>,
     },
     Expression(Vec<Box<Node>>),
     Output {
