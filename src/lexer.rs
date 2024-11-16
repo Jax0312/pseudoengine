@@ -152,12 +152,11 @@ fn match_symbol(sym: String) -> TToken {
     match sym.as_str() {
         "+" | "-" | "*" | "/" => TToken::Operator(sym.clone()),
         "<>" => TToken::Operator("!=".to_string()),
-        "=" | ">=" | ">" | "<" | "<=" => TToken::Operator(sym.clone()),
+        "=" | ">=" | ">" | "<" | "<=" | "&" => TToken::Operator(sym.clone()),
         "(" => TToken::LParen,
         ")" => TToken::RParen,
         "[" => TToken::LSqrBracket,
         "]" => TToken::RSqrBracket,
-        "&" => TToken::Ampersand,
         "<-" => TToken::Assignment,
         ":" => TToken::Colon,
         "," => TToken::Comma,

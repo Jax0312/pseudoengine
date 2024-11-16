@@ -13,7 +13,6 @@ pub enum TToken {
     RParen,
     LSqrBracket,
     RSqrBracket,
-    Ampersand,
     Assignment,
     Colon,
     Comma,

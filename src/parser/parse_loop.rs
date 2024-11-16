@@ -1,4 +1,3 @@
-use std::fmt::format;
 use crate::enums::{Node, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_expr::parse_expression;
@@ -16,7 +15,7 @@ pub fn parse_while(lexer: &mut Lexer) -> Box<Node> {
     loop {
         match lexer.peek() {
             Some(Token {t: TToken::EOF, pos}) => err("'ENDWHILE' expected", pos),
-            Some(Token { t: TToken::EndWhile, pos}) => {
+            Some(Token { t: TToken::EndWhile, pos: _}) => {
                 lexer.next();
                 break;
             }, 
@@ -53,7 +52,7 @@ pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     loop {
         match lexer.peek() {
             Some(Token {t: TToken::EOF, pos}) => err("'NEXT' expected", pos),
-            Some(Token { t: TToken::Next, pos}) => {
+            Some(Token { t: TToken::Next, pos: _}) => {
                 lexer.next();
                 break;
             },

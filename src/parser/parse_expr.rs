@@ -10,8 +10,6 @@ enum Associativity {
     Right,
 }
 
-// TODO: fix brackets, unreachable reached, add string concat op
-
 struct Operator {
     precedence: u8,
     associativity: Associativity,
@@ -69,6 +67,9 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Optio
 
                         while let Some(top) = operators.last() {
                             if let Node::Op {op:top_op, pos: _} = top.clone() {
+                                
+                                if top_op == "(" { break }
+                                
                                 let top_op_info = get_operator_precedence(&top_op);
                                 let op_info = get_operator_precedence(&_op);
 
@@ -207,6 +208,10 @@ fn get_operator_precedence(op: &String) -> Operator {
             associativity: Associativity::Left,
         },
         "%" => Operator {
+            precedence: 4,
+            associativity: Associativity::Left,
+        },
+        "&" => Operator {
             precedence: 4,
             associativity: Associativity::Left,
         },

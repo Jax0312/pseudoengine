@@ -1,5 +1,1 @@
-WHILE TRUE
-    FOR j <- -5 TO 5 STEP 5
-
-    NEXT j
-ENDWHILE
+j <- "Hello" & "World"
