@@ -22,6 +22,11 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
     // Previous token is plus or minus
     let mut last_token_is_pm = true;
     let exit_token;
+    
+    // Check if this is a call to create a new instance
+    if let Some(Token {t: TToken::New, pos}) = lexer.peek() {
+        return create_object(lexer);
+    }
 
     loop {
         match lexer.peek().unwrap().t {
@@ -140,6 +145,17 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
     }
     
     (Box::from(Node::Expression(output.into_iter().map(Box::from).collect::<Vec<Box<Node>>>())), exit_token)
+}
+
+fn create_object(lexer: &mut Lexer) -> (Box<Node>, Token) {
+    // skip NEW token
+    let token = lexer.next();
+    let call = parse_identifier(lexer);
+    match *call {
+        Node::FunctionCall {..} => (),
+        _ => err("Class constructor call expected", &token.unwrap().pos),
+    }
+    (Box::from(Node::CreateObject(call)), lexer.next().unwrap())
 }
 
 fn get_operator_precedence(op: &String) -> Operator {

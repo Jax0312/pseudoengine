@@ -50,6 +50,8 @@ pub enum Node {
         params: Vec<Box<Node>>,
         children: Vec<Box<Node>>,
     },
+    Private(Box<Node>),
+    CreateObject(Box<Node>),
     Int {
         val: i64,
         pos: Position,

@@ -22,7 +22,7 @@ pub fn parse_function(lexer: &mut Lexer) -> Box<Node> {
     let mut children = vec![];
     loop {
         match lexer.peek() {
-            Some(Token { t: TToken::EndFunction, pos}) => {
+            Some(Token { t: TToken::EndFunction, pos: _}) => {
                 lexer.next();
                 break;
             }
@@ -50,7 +50,7 @@ pub fn parse_procedure(lexer: &mut Lexer) -> Box<Node> {
     let mut children = vec![];
     loop {
         match lexer.peek() {
-            Some(Token { t: TToken::EndProcedure, pos}) => {
+            Some(Token { t: TToken::EndProcedure, pos: _}) => {
                 lexer.next();
                 break;
             }
