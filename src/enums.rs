@@ -149,5 +149,10 @@ pub enum Node {
         filename: Box<Node>,
         var: Box<Node>,
     },
+    If {
+        cond: Box<Node>,
+        true_body: Vec<Box<Node>>,
+        false_body: Vec<Box<Node>>,
+    },
     Null,
 }

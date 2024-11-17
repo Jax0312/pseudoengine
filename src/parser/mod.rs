@@ -6,6 +6,7 @@ use crate::parser::parse_func::{parse_function, parse_procedure};
 use crate::parser::parse_identifier::parse_identifier;
 use crate::parser::parse_io::*;
 use crate::parser::parse_loop::{parse_for, parse_repeat, parse_while};
+use crate::parser::parse_selection::parse_if;
 use crate::tokens::TToken;
 use crate::utils::err;
 
@@ -15,6 +16,7 @@ mod parse_identifier;
 mod parse_loop;
 mod parse_io;
 mod parse_func;
+mod parse_selection;
 
 pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
     let mut nodes = Vec::new();
@@ -54,6 +56,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::Seek => parse_seek_file(lexer),
         TToken::GetRecord => parse_get_record(lexer),
         TToken::PutRecord => parse_put_record(lexer),
+        TToken::If => parse_if(lexer),
         TToken::Newline | TToken::EOF => {
             lexer.next();
             Box::new(Node::Null)
