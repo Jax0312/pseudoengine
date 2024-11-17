@@ -49,3 +49,8 @@ pub fn parse_if(lexer: &mut Lexer) -> Box<Node> {
     })
     
 }
+
+// pub fn parse_case(lexer: &mut Lexer) -> Box<Node> {
+//     // skip CASE token
+//     lexer.next();
+// }

@@ -39,6 +39,11 @@ pub enum Node {
     Main {
         children: Vec<Box<Node>>,
     },
+    Class {
+        name: Box<Node>,
+        base: Box<Node>,
+        children: Vec<Box<Node>>,
+    },
     Function {
         name: Box<Node>,
         params: Vec<Box<Node>>,
@@ -149,6 +154,7 @@ pub enum Node {
         filename: Box<Node>,
         var: Box<Node>,
     },
+    Return(Box<Node>),
     If {
         cond: Box<Node>,
         true_body: Vec<Box<Node>>,
