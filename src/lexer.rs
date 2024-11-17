@@ -228,7 +228,7 @@ fn match_word(word: String) -> TToken {
         "REAL" => TToken::VarType(VariableType::Real),
         "STRING" => TToken::VarType(VariableType::String),
         "DATE" => TToken::VarType(VariableType::Date),
-        _ => TToken::Identifier(word),
+        _ => TToken::Identifier(word.to_lowercase()),
     }
     
 }
