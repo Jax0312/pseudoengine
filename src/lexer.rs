@@ -212,7 +212,6 @@ fn match_word(word: String) -> TToken {
         "TO" => TToken::To,
         "SEEK" => TToken::Seek,
         "STEP" => TToken::Step,
-        "SUPER" => TToken::Super,
         "THEN" => TToken::Then,
         "TYPE" => TToken::Type,
         "UNTIL" => TToken::Until,

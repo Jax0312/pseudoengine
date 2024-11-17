@@ -69,7 +69,6 @@ pub enum TToken {
     To,
     Seek,
     Step,
-    Super,
     Then,
     Type,
     Until,

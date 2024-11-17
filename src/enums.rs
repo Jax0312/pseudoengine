@@ -9,6 +9,7 @@ pub enum VariableType {
     String,
     Date,
     Array(Box<Array>),
+    Composite(String),
     // Composite,
     // ENUM
     // Pointers
@@ -38,6 +39,17 @@ pub enum Node {
     Main {
         children: Vec<Box<Node>>,
     },
+    Function {
+        name: Box<Node>,
+        params: Vec<Box<Node>>,
+        return_type: Box<VariableType>,
+        children: Vec<Box<Node>>,
+    },
+    Procedure {
+        name: Box<Node>,
+        params: Vec<Box<Node>>,
+        children: Vec<Box<Node>>,
+    },
     Int {
         val: i64,
         pos: Position,
@@ -50,7 +62,7 @@ pub enum Node {
         val: bool,
         pos: Position,
     },
-    Real{
+    Real {
         val: f64,
         pos: Position,
     },
@@ -87,7 +99,7 @@ pub enum Node {
     },
     FunctionCall {
         name: String,
-        params: Vec<Box<Node>>
+        params: Vec<Box<Node>>,
     },
     While {
         cond: Box<Node>,

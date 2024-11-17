@@ -4,12 +4,17 @@ use crate::tokens::TToken;
 use crate::utils::{err, expect_token};
 
 pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {
+    // Skip Declare token
+    lexer.next();
+    parse_declaration(lexer)
+}
+
+// Actual parsing of declaration content
+pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
+
     let mut expect_ident = false;
     let mut vars = Vec::<String>::new();
     let mut current;
-    
-    // Skip Declare token
-    lexer.next();
     
     // Handle one or more identifier
 
@@ -30,13 +35,13 @@ pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {
         }
     }
     let current = current.unwrap();
-    
+
     if expect_ident {
         err("Identifier expected", &current.pos);
     } else if current.t != TToken::Colon {
         err(": expected", &current.pos);
     }
-    
+
     // Handle variable type
     match lexer.next().unwrap() {
         Token { t: TToken::VarType(vt), pos: _ } => Box::new(Node::Declare {
@@ -51,7 +56,7 @@ pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {
     }
 }
 
-fn parse_array(lexer: &mut Lexer) -> Box<VariableType> {
+pub fn parse_array(lexer: &mut Lexer) -> Box<VariableType> {
 
     expect_token(lexer, &[TToken::LSqrBracket], "[");
 

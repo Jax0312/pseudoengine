@@ -1,2 +1,3 @@
-GETRECORD "Hello", jo
-PUTRECORD "Hello", jo
+PROCEDURE foo(BYREF value, hey: STRING, BYVAL another: INTEGER)
+    OUTPUT "Hello"
+ENDPROCEDURE
