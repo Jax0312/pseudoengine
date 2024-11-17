@@ -5,7 +5,7 @@ use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_func::{parse_function, parse_procedure};
 use crate::parser::parse_identifier::parse_identifier;
 use crate::parser::parse_io::*;
-use crate::parser::parse_loop::{parse_for, parse_while};
+use crate::parser::parse_loop::{parse_for, parse_repeat, parse_while};
 use crate::tokens::TToken;
 use crate::utils::err;
 
@@ -44,6 +44,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::Identifier(_) => parse_assign(lexer),
         TToken::While => parse_while(lexer),
         TToken::For => parse_for(lexer),
+        TToken::Repeat => parse_repeat(lexer),
         TToken::Input => parse_input(lexer),
         TToken::Output => parse_output(lexer),
         TToken::OpenFile => parse_open_file(lexer),

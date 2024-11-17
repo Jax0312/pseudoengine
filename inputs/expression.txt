@@ -1,1 +1,3 @@
-output <- NEW foo("Hello", "man")
+REPEAT
+    DECLARE i : INTEGER
+UNTIL TRUE

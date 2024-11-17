@@ -22,9 +22,9 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
     // Previous token is plus or minus
     let mut last_token_is_pm = true;
     let exit_token;
-    
+
     // Check if this is a call to create a new instance
-    if let Some(Token {t: TToken::New, pos}) = lexer.peek() {
+    if let Some(Token {t: TToken::New, pos:_}) = lexer.peek() {
         return create_object(lexer);
     }
 
@@ -72,9 +72,9 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
 
                         while let Some(top) = operators.last() {
                             if let Node::Op {op:top_op, pos: _} = top.clone() {
-                                
+
                                 if top_op == "(" { break }
-                                
+
                                 let top_op_info = get_operator_precedence(&top_op);
                                 let op_info = get_operator_precedence(&_op);
 
@@ -135,7 +135,7 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
         match &node {
             Node::Op {op, pos } => {
                 if op == "(" || op == ")" {
-                    err("Mismatched parentheses", pos);        
+                    err("Mismatched parentheses", pos);
                 } else {
                     output.push(node);
                 }
@@ -143,7 +143,7 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
             _ => unreachable!()
         }
     }
-    
+
     (Box::from(Node::Expression(output.into_iter().map(Box::from).collect::<Vec<Box<Node>>>())), exit_token)
 }
 

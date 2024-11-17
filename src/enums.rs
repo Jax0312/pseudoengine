@@ -107,6 +107,10 @@ pub enum Node {
         cond: Box<Node>,
         body: Vec<Box<Node>>,
     },
+    Repeat {
+        cond: Box<Node>,
+        body: Vec<Box<Node>>,
+    },
     For {
         iter: Box<Node>,
         range: Box<Node>,

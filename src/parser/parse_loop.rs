@@ -28,6 +28,31 @@ pub fn parse_while(lexer: &mut Lexer) -> Box<Node> {
     })
 }
 
+pub fn parse_repeat(lexer: &mut Lexer) -> Box<Node> {
+    // skip REPEAT token
+    lexer.next();
+    
+    let mut body = vec![];
+    loop {
+        match lexer.peek() {
+            Some(Token {t: TToken::EOF, pos}) => err("'UNTIL' expected", pos),
+            Some(Token { t: TToken::Until, pos: _}) => {
+                lexer.next();
+                break;
+            },
+            _ => body.push(parse_line(lexer))
+        }
+    }
+    
+    let cond = parse_expression(lexer, &[]).0;
+    
+    Box::from(Node::Repeat {
+        cond,
+        body
+    })
+    
+}
+
 pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     // skip for token
     lexer.next();
