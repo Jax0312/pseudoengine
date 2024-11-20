@@ -160,5 +160,14 @@ pub enum Node {
         true_body: Vec<Box<Node>>,
         false_body: Vec<Box<Node>>,
     },
+    Switch {
+        cmp: Box<Node>,
+        cases: Vec<Box<Node>>,
+        otherwise: Vec<Box<Node>>,
+    },
+    Case {
+        expr: Box<Node>,
+        children: Vec<Box<Node>>,
+    },
     Null,
 }

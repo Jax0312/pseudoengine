@@ -45,7 +45,6 @@ pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
 pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
     match lexer.peek().unwrap().t {
         TToken::Declare => parse_declare(lexer),
-        TToken::Identifier(_) => parse_assign(lexer),
         TToken::While => parse_while(lexer),
         TToken::For => parse_for(lexer),
         TToken::Repeat => parse_repeat(lexer),
@@ -61,6 +60,10 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::If => parse_if(lexer),
         // TToken::Case => parse_case(lexer),
         TToken::Return => parse_return(lexer),
+        TToken::Identifier(_) => {
+            let lhs = parse_identifier(lexer);
+            try_parse_assign(lexer, lhs)
+        },
         TToken::Newline | TToken::EOF => {
             lexer.next();
             Box::new(Node::Null)
@@ -71,9 +74,8 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
     }
 }
 
-fn parse_assign(lexer: &mut Lexer) -> Box<Node> {
-
-    let lhs = parse_identifier(lexer);
+fn try_parse_assign(lexer: &mut Lexer, lhs: Box<Node>) -> Box<Node> {
+    
     match lexer.next().unwrap() {
         Token { t: TToken::Assignment, pos: _ } => {
             Box::from(Node::Assignment {

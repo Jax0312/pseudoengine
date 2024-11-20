@@ -1,12 +1,2 @@
-CLASS Parent
-
-    PUBLIC five: INTEGER
-    PUBLIC PROCEDURE NEW()
-            OUTPUT "Parent Created"
-    ENDPROCEDURE
-    
-    PRIVATE FUNCTION foo() RETURNS INTEGER
-        RETURN 5
-    ENDFUNCTION
-
-ENDCLASS
+DECLARE x, y : INTEGER
+x <- 5 + 4 + x

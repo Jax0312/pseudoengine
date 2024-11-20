@@ -1,11 +1,11 @@
 use std::{fs::File, io::Read};
 
-mod executor;
 mod tokens;
 mod parser;
 mod enums;
 mod lexer;
 mod utils;
+mod executor;
 
 const FILEPATH: &str = "inputs/expression.txt";
 

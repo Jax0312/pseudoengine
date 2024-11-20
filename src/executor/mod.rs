@@ -1,7 +1,149 @@
 // use crate::parser::{Node, VariableType, Operator};
 // use std::any::Any;
-// use std::collections::HashMap;
+
+mod variable;
+mod io;
+
+use std::any::Any;
 // use std::io;
+use std::collections::HashMap;
+use crate::enums::{Node, VariableType};
+use crate::executor::io::run_output;
+use crate::executor::variable::run_declare;
+
+pub fn start(mut nodes: Vec<Box<Node>>) {
+    let mut scopes = vec![Scope::Global(State::new())];
+    
+    for node in nodes {
+        match *node {
+            Node::Main {children} => {
+                for child in children {
+                    run(&mut scopes, &child)       
+                }
+            },
+            _ => unimplemented!(),
+        }
+    }
+}
+
+fn run(scopes: &mut Vec<Scope>, node: &Node) {
+    match node {
+        Node::Declare { t, children } => run_declare(scopes, children, t),
+        Node::Output {children} => run_output(scopes, children),
+        Node::Null => (),
+        _ => unimplemented!(),
+    }
+}
+
+// pub fn get_var<>(states: &mut Vec<Scope>, identifier: &String) -> &mut Variable {
+// 
+//     for scope in states.iter_mut().rev() {
+//         match scope {
+//             &mut Scope::Global(mut state) => {
+//                 if let Some(var) = state.variables.get_mut(identifier) {
+//                     return var;
+//                 } else {
+//                     break;
+//                 }
+//             }
+//             &mut Scope::Local(mut state) => {
+//                 if let Some(var) = state.variables.get_mut(identifier) {
+//                     return var;
+//                 }
+//             },
+//         }
+//     }
+//     
+//     // Search for value in top global
+//     let Scope::Global(mut state) = states.first().unwrap() else { unreachable!() };
+//     if let Some(var) = state.variables.get_mut(identifier) {
+//         return var;
+//     }
+//     
+//     runtime_err(format!("{} is not declared", identifier))
+//     
+// }
+
+pub fn set_var(states: &mut [Scope], identifier: &String, value: Box<dyn Any>) {
+    for scope in states.iter_mut().rev() {
+        match scope {
+            Scope::Global(ref mut state) => {
+                if let Some(var) = state.variables.get_mut(identifier) {
+                    return var.value = value;
+                } else {
+                    break;
+                }
+            }
+            Scope::Local(ref mut state) => {
+                if let Some(var) = state.variables.get_mut(identifier) {
+                    return var.value = value;
+                }
+            }
+        }
+    }
+
+    if let Some(Scope::Global(state)) = states.first_mut() {
+        if let Some(var) = state.variables.get_mut(identifier) {
+            return var.value = value;
+        }
+    }
+
+    runtime_err(format!("{} is not declared", identifier))    
+}
+
+pub fn get_var<'a>(states: &'a[Scope], identifier: &String) -> &'a Variable {
+    for scope in states.iter().rev() {
+        match scope {
+            Scope::Global(state) => {
+                if let Some(var) = state.variables.get(identifier) {
+                    return var;
+                } else {
+                    break;
+                }
+            }
+            Scope::Local(state) => {
+                if let Some(var) = state.variables.get(identifier) {
+                    return var;
+                }
+            }
+        }
+    }
+
+    if let Some(Scope::Global(state)) = states.first() {
+        if let Some(var) = state.variables.get(identifier) {
+            return var;
+        }
+    }
+
+    runtime_err(format!("{} is not declared", identifier))
+}
+
+fn runtime_err(message: String) -> ! {
+    println!("Runtime error: {}", message);
+    panic!()
+}
+
+pub struct State {
+    pub variables: HashMap<String, Variable>,
+}
+
+impl State {
+    fn new() -> Self {
+        Self { variables: HashMap::new() }
+    }
+}
+
+pub enum Scope {
+    Global(State),
+    Local(State)
+}
+
+#[derive(Debug)]
+pub struct Variable {
+    pub value: Box<dyn Any>,
+    pub t: VariableType,
+}
+
 
 // pub fn run(mut nodes: Vec<Box<Node>>) {
 //     let mut g_state = GlobalState {
@@ -176,11 +318,3 @@
 //     }
 // }
 //
-// struct GlobalState {
-//     variables: HashMap<String, Variable>,
-// }
-// #[derive(Debug)]
-// struct Variable {
-//     value: Box<dyn Any>,
-//     t: VariableType,
-// }
