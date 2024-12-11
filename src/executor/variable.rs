@@ -1,4 +1,4 @@
-use crate::enums::VariableType;
+use crate::enums::{Node, VariableType};
 use crate::executor::{runtime_err, Scope, Variable};
 
 pub fn run_declare(scopes: &mut Vec<Scope>, identifiers: &[String], t: &Box<VariableType>) {
@@ -7,7 +7,7 @@ pub fn run_declare(scopes: &mut Vec<Scope>, identifiers: &[String], t: &Box<Vari
         match scope {
             Scope::Global(ref mut state) | Scope::Local(ref mut state) => {
                 if !state.variables.contains_key(identifier) {
-                    state.variables.insert(identifier.clone(), Variable { value: Box::new(()), t: *t.clone() });
+                    state.variables.insert(identifier.clone(), Variable { value: Box::new(Node::Null), t: *t.clone() });
                 } else {
                     runtime_err(format!("{} is already initialized", identifier))
                 }

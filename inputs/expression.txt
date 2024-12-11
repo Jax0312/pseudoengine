@@ -1,2 +1,3 @@
 DECLARE x, y : INTEGER
 x <- 5 + 4 + x
+OUTPUT x

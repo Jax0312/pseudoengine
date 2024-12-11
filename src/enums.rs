@@ -27,6 +27,13 @@ pub struct Position {
     pub line: usize,
     pub col: usize,
 }
+
+impl Position {
+    pub fn invalid() -> Position {
+        Position { line: usize::MAX, col: usize::MAX }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Token {
     pub t: TToken,

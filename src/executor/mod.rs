@@ -64,7 +64,7 @@ fn run(scopes: &mut Vec<Scope>, node: &Node) {
 //     
 // }
 
-pub fn set_var(states: &mut [Scope], identifier: &String, value: Box<dyn Any>) {
+pub fn set_var(states: &mut [Scope], identifier: &String, value: Box<Node>) {
     for scope in states.iter_mut().rev() {
         match scope {
             Scope::Global(ref mut state) => {
@@ -140,7 +140,7 @@ pub enum Scope {
 
 #[derive(Debug)]
 pub struct Variable {
-    pub value: Box<dyn Any>,
+    pub value: Box<Node>,
     pub t: VariableType,
 }
 
