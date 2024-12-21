@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use std::{fs::File, io::Read};
 
 mod tokens;
@@ -7,7 +8,7 @@ mod lexer;
 mod utils;
 mod executor;
 
-const FILEPATH: &str = "inputs/expression.txt";
+const FILEPATH: &str = "inputs/demo.txt";
 
 fn main() {
     // Read input
@@ -19,8 +20,7 @@ fn main() {
     buf = buf.trim().parse().unwrap();
     buf.push('\n');
     let mut lex = lexer::lexer(&mut buf.chars()).into_iter().peekable();
-    parser::parse_file(&mut lex);
-    // executor::run(parser::parse(&mut lexer::lexer(&mut buf)));
-    
+    let ast = parser::parse_file(&mut lex);
+    executor::run(ast);
 }
 

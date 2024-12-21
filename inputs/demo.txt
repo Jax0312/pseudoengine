@@ -1,4 +1,6 @@
-DECLARE name : STRING
-OUTPUT "Your name is: \n "
-INPUT name
-OUTPUT "Name: ", name
+DECLARE x, y : INTEGER
+FOR i <- 0 TO 4 
+    IF i > 2 THEN
+        OUTPUT i
+    ENDIF
+NEXT i
