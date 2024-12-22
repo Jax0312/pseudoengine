@@ -3,6 +3,7 @@ use crate::tokens::TToken;
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableType {
+    Boolean,
     Integer,
     Real,
     Char,
@@ -13,6 +14,12 @@ pub enum VariableType {
     // Composite,
     // ENUM
     // Pointers
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Index {
+    pub lower: i64,
+    pub upper: i64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -96,6 +103,11 @@ pub enum Node {
     ArrayVar {
         name: String,
         indices: Vec<Box<Node>>,
+        pos: Position,
+    },
+    Array {
+        values: Vec<Box<Node>>,
+        indices: Vec<Index>,
         pos: Position,
     },
     Range {

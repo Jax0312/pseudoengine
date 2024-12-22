@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::enums::{Node, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_class::parse_class;
@@ -7,18 +9,18 @@ use crate::parser::parse_func::{parse_function, parse_procedure, parse_return};
 use crate::parser::parse_identifier::parse_identifier;
 use crate::parser::parse_io::*;
 use crate::parser::parse_loop::{parse_for, parse_repeat, parse_while};
-use crate::parser::parse_selection::{parse_if};
+use crate::parser::parse_selection::parse_if;
 use crate::tokens::TToken;
 use crate::utils::err;
 
+mod parse_class;
 mod parse_declare;
 pub mod parse_expr;
-mod parse_identifier;
-mod parse_loop;
-mod parse_io;
 mod parse_func;
+mod parse_identifier;
+mod parse_io;
+mod parse_loop;
 mod parse_selection;
-mod parse_class;
 
 pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
     let mut nodes = Vec::new();
@@ -63,35 +65,32 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::Identifier(_) => {
             let lhs = parse_identifier(lexer);
             try_parse_assign(lexer, lhs)
-        },
+        }
         TToken::Newline | TToken::EOF => {
             lexer.next();
             Box::new(Node::Null)
-        },
-        TToken::Procedure | TToken::Function => err("Procedure and Function can only be declared in the global scope", &lexer.peek().unwrap().pos),
-        TToken::Class => err("Class can only be declared in the global scope", &lexer.peek().unwrap().pos),
+        }
+        TToken::Procedure | TToken::Function => err(
+            "Procedure and Function can only be declared in the global scope",
+            &lexer.peek().unwrap().pos,
+        ),
+        TToken::Class => err(
+            "Class can only be declared in the global scope",
+            &lexer.peek().unwrap().pos,
+        ),
         _ => err("Invalid syntax", &lexer.peek().unwrap().pos),
     }
 }
 
 fn try_parse_assign(lexer: &mut Lexer, lhs: Box<Node>) -> Box<Node> {
-    
     match lexer.next().unwrap() {
-        Token { t: TToken::Assignment, pos: _ } => {
-            Box::from(Node::Assignment {
-                lhs,
-                rhs: parse_expression(lexer, &[]).0,
-            })
-        },
-        _ => {
-            // Skip the rest of the expression as it is meaningless without assignment
-            while let Some(t) = lexer.next() {
-                if t.t == TToken::Newline {
-                    break;
-                }
-            }
-            Box::from(Node::Null)
-        },
+        Token {
+            t: TToken::Assignment,
+            pos: _,
+        } => Box::from(Node::Assignment {
+            lhs,
+            rhs: parse_expression(lexer, &[]).0,
+        }),
+        _ => Box::from(Node::Expression(vec![lhs])),
     }
-
 }

@@ -1,6 +1,8 @@
-DECLARE x, y : INTEGER
-FOR i <- 0 TO 4 
-    IF i > 2 THEN
-        OUTPUT i
-    ENDIF
-NEXT i
+FUNCTION print(value: STRING) RETURNS INTEGER
+    OUTPUT value
+    RETURN 0
+ENDFUNCTION
+
+DECLARE arr : ARRAY[0:2, 0:3] OF STRING
+arr[1, 0] <- "Hello World!"
+print(arr[1, 0])
