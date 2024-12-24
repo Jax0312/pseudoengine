@@ -1,4 +1,6 @@
-use crate::tokens::TToken;
+use std::collections::HashMap;
+
+use crate::{executor::Property, tokens::TToken};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -10,9 +12,7 @@ pub enum VariableType {
     String,
     Date,
     Array(Box<Array>),
-    Composite(String),
-    // Composite,
-    // ENUM
+    Custom(String),
     // Pointers
 }
 
@@ -37,7 +37,10 @@ pub struct Position {
 
 impl Position {
     pub fn invalid() -> Position {
-        Position { line: usize::MAX, col: usize::MAX }
+        Position {
+            line: usize::MAX,
+            col: usize::MAX,
+        }
     }
 }
 
@@ -57,6 +60,10 @@ pub enum Node {
         name: Box<Node>,
         base: Box<Node>,
         children: Vec<Box<Node>>,
+    },
+    Object {
+        // name: String,
+        props: HashMap<String, Property>,
     },
     Function {
         name: Box<Node>,
@@ -91,6 +98,7 @@ pub enum Node {
         name: String,
         pos: Position,
     },
+    RefVar(*mut Box<Node>),
     Reference(Box<Node>),
     Dereference(Box<Node>),
     Composite {
@@ -107,7 +115,7 @@ pub enum Node {
     },
     Array {
         values: Vec<Box<Node>>,
-        indices: Vec<Index>,
+        shape: Vec<Index>,
         pos: Position,
     },
     Range {

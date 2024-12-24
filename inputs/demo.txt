@@ -1,8 +1,12 @@
-FUNCTION print(value: STRING) RETURNS INTEGER
-    OUTPUT value
-    RETURN 0
-ENDFUNCTION
+CLASS Pet INHERITS Snake
+    PUBLIC Name : STRING
+    PUBLIC PROCEDURE NEW(GivenName : STRING)
+        Name <- GivenName
+    ENDPROCEDURE
+ENDCLASS
 
-DECLARE arr : ARRAY[0:2, 0:3] OF STRING
-arr[1, 0] <- "Hello World!"
-print(arr[1, 0])
+DECLARE pet: Pet
+pet <- NEW Pet("Hello")
+OUTPUT pet.Name
+pet.Name <- "World"
+OUTPUT pet.Name

@@ -42,7 +42,7 @@ pub fn parse_function(lexer: &mut Lexer) -> Box<Node> {
     .t
     {
         TToken::VarType(vt) => Box::from(vt),
-        TToken::Identifier(vt) => Box::from(VariableType::Composite(vt)),
+        TToken::Identifier(vt) => Box::from(VariableType::Custom(vt)),
         TToken::Array => parse_array(lexer),
         _ => unreachable!(),
     };

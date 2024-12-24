@@ -1,13 +1,15 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use crate::enums::{Node, VariableType};
 use crate::executor::runtime_err;
 
 pub struct Executor {
     pub scopes: Vec<Scope>,
-    pub functions: HashMap<String, Function>,
+    pub defs: HashMap<String, Definition>,
 }
 
+#[derive(Debug)]
 pub struct State {
     pub variables: HashMap<String, Variable>,
 }
@@ -20,27 +22,49 @@ impl State {
     }
 }
 
+#[derive(Debug)]
 pub enum Scope {
     Global(State),
     Local(State),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Variable {
     pub value: Box<Node>,
     pub t: VariableType,
 }
 
-#[derive(Debug)]
-pub struct Function {
-    pub value: Box<Node>,
+#[derive(Debug, Clone)]
+pub enum Property {
+    Var {
+        value: Box<Node>,
+        t: Box<VariableType>,
+        private: bool,
+    },
+    Procedure {
+        params: Vec<Box<Node>>,
+        children: Vec<Box<Node>>,
+        private: bool,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Definition {
+    Function {
+        params: Vec<Box<Node>>,
+        children: Vec<Box<Node>>,
+    },
+    Class {
+        name: String,
+        props: HashMap<String, Property>,
+    },
 }
 
 impl Executor {
     pub fn new() -> Executor {
         Executor {
             scopes: vec![Scope::Global(State::new())],
-            functions: HashMap::new(),
+            defs: HashMap::new(),
         }
     }
 
@@ -48,26 +72,21 @@ impl Executor {
         self.scopes.push(Scope::Local(State::new()))
     }
 
-    pub fn exit_scope(&mut self) {
-        self.scopes.pop();
+    pub fn exit_scope(&mut self) -> Scope {
+        self.scopes.pop().unwrap()
     }
 
-    pub fn declare_fn(&mut self, identifier: &String, node: &Box<Node>) {
-        if !self.functions.contains_key(identifier) {
-            self.functions.insert(
-                identifier.clone(),
-                Function {
-                    value: node.clone(),
-                },
-            );
+    pub fn declare_def(&mut self, identifier: &String, def: Definition) {
+        if !self.defs.contains_key(identifier) {
+            self.defs.insert(identifier.clone(), def);
             return;
         }
         runtime_err(format!("{} is already declared", identifier))
     }
 
-    pub fn get_fn(&mut self, identifier: &String) -> Box<Node> {
-        if self.functions.contains_key(identifier) {
-            return self.functions.get(identifier).unwrap().value.clone();
+    pub fn get_def(&mut self, identifier: &String) -> Definition {
+        if self.defs.contains_key(identifier) {
+            return self.defs.get(identifier).unwrap().clone();
         }
         runtime_err(format!("{} is not declared", identifier))
     }

@@ -52,6 +52,10 @@ pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
             t: parse_array(lexer),
             children: vars,
         }),
+        Token { t: TToken::Identifier(name), pos: _ }=> Box::new(Node::Declare {
+            t: Box::from(VariableType::Custom((name))),
+            children: vars,
+        }),
         Token { t: _, pos} => err("Type expected", &pos),
     }
 }

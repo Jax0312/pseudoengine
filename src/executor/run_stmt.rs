@@ -1,12 +1,15 @@
+use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_expr::run_expr;
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::runtime_err;
-use crate::executor::variable::Executor;
+use crate::executor::variable::{Definition, Executor, Property};
 
-use super::var_type_of;
+use super::run_expr::get_array_index;
+use super::variable::Variable;
+use super::{default_var, var_type_of};
 
 pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) {
     for node in nodes {
@@ -31,7 +34,17 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
         } => run_for(executor, iter, range, step, body),
         Node::Output { children } => run_output(executor, children),
         Node::Input { child } => run_input(executor, child),
-        Node::Function { name, .. } => run_function(executor, name, node),
+        Node::Function {
+            name,
+            params,
+            children,
+            ..
+        } => run_function(executor, name, params, children),
+        Node::Class {
+            name,
+            base,
+            children,
+        } => run_class(executor, name, base, children),
         Node::Expression(_) => {
             run_expr(executor, node);
         }
@@ -41,49 +54,90 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
     }
 }
 
-fn run_function(executor: &mut Executor, identifier: &Box<Node>, node: &Box<Node>) {
+fn run_function(
+    executor: &mut Executor,
+    identifier: &Box<Node>,
+    params: &Vec<Box<Node>>,
+    children: &Vec<Box<Node>>,
+) {
     if let Node::String { val, .. } = identifier.deref() {
-        return executor.declare_fn(val, node);
+        return executor.declare_def(
+            val,
+            Definition::Function {
+                params: params.clone(),
+                children: children.clone(),
+            },
+        );
     }
     runtime_err("Invalid function declaration".to_string())
 }
 
+fn run_class(
+    executor: &mut Executor,
+    name: &Box<Node>,
+    base: &Box<Node>,
+    children: &Vec<Box<Node>>,
+) {
+    let mut props = HashMap::new();
+    for node in children.clone() {
+        match node.deref() {
+            Node::Null => (),
+            _ => {
+                let (name, prop) = run_class_prop(executor, &node, false);
+                props.insert(name, prop);
+            }
+        }
+    }
+    if let Node::String { val, .. } = name.deref() {
+        return executor.declare_def(
+            val,
+            Definition::Class {
+                name: val.clone(),
+                props,
+            },
+        );
+    }
+    runtime_err("Invalid function declaration".to_string())
+}
+
+fn run_class_prop(executor: &mut Executor, prop: &Box<Node>, private: bool) -> (String, Property) {
+    match prop.deref() {
+        Node::Procedure {
+            name,
+            params,
+            children,
+        } => {
+            if let Node::String { val, .. } = name.deref() {
+                return (
+                    val.clone(),
+                    Property::Procedure {
+                        private,
+                        params: params.clone(),
+                        children: children.clone(),
+                    },
+                );
+            }
+            unreachable!()
+        }
+        Node::Declare { children, t } => {
+            return (
+                children[0].clone(),
+                Property::Var {
+                    private,
+                    value: default_var(executor, t),
+                    t: t.clone(),
+                },
+            );
+        }
+        Node::Private(node) => return run_class_prop(executor, node, true),
+        _ => runtime_err("Invalid class declaration".to_string()),
+    }
+}
+
 fn run_declare(executor: &mut Executor, identifiers: &[String], t: &Box<VariableType>) {
     for identifier in identifiers {
-        let value = match t.deref() {
-            VariableType::Integer => Node::Int {
-                val: 0,
-                pos: Position::invalid(),
-            },
-            VariableType::Real => Node::Real {
-                val: 0.0,
-                pos: Position::invalid(),
-            },
-            VariableType::String => Node::String {
-                val: String::new(),
-                pos: Position::invalid(),
-            },
-            VariableType::Array(_) => {
-                let mut indices = Vec::new();
-                let mut capacity = 1;
-                let mut inner_t = t.clone();
-                while let VariableType::Array(array) = inner_t.deref() {
-                    indices.push(Index {
-                        upper: array.upper,
-                        lower: array.lower,
-                    });
-                    capacity = capacity * (array.upper - array.lower);
-                    inner_t = array.t.clone();
-                }
-                Node::Array {
-                    values: vec![Box::new(Node::Null); capacity as usize],
-                    indices,
-                    pos: Position::invalid(),
-                }
-            }
-            _ => unimplemented!(),
-        };
-        executor.declare_var(identifier, Box::new(value), t);
+        let value = default_var(executor, t);
+        executor.declare_var(identifier, value, t);
     }
 }
 
@@ -111,39 +165,98 @@ fn run_while(executor: &mut Executor, cond: &Box<Node>, body: &Vec<Box<Node>>) {
 }
 
 fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
-    if let Node::Var { name, .. } = lhs.deref() {
-        let t = executor.get_var(name).t.clone();
-        let expr = run_expr(executor, rhs);
-        if var_type_of(&expr) == t {
-            return executor.set_var(name, expr);
+    let rhs = run_expr(executor, rhs);
+    match lhs.deref() {
+        Node::Var { name, .. } => {
+            executor.get_var_mut(name).value = rhs;
         }
-        runtime_err("Mismatched types".to_string());
-    } else if let Node::ArrayVar { name, indices, .. } = lhs.deref() {
-        let index_exprs = indices
-            .iter()
-            .map(|index| as_number_expr(executor, index))
-            .collect::<Vec<i64>>();
-        let expr = run_expr(executor, rhs);
-        let node = &mut executor.get_var_mut(name).value;
-        if let Node::Array {
-            values,
-            indices: array_indices,
-            ..
-        } = node.deref_mut()
-        {
-            let mut size = 1;
-            let mut total_index = 0;
-            if indices.len() != array_indices.len() {
-                runtime_err("Missing indices".to_string())
+        Node::ArrayVar { name, indices, .. } => {
+            let indices = indices
+                .iter()
+                .map(|index| as_number_expr(executor, index))
+                .collect::<Vec<i64>>();
+            let node = &mut executor.get_var_mut(name).value;
+            let var = run_array_access(node, indices);
+            *var = rhs;
+        }
+        Node::RefVar(var) => unsafe { **var = rhs },
+        Node::Composite { children } => {
+            let mut children = children.clone();
+            for child in children.iter_mut() {
+                if let Node::ArrayVar { name, indices, .. } = child.deref_mut() {
+                    for index in indices {
+                        *index = Box::new(Node::Int {
+                            val: as_number_expr(executor, index),
+                            pos: Position::invalid(),
+                        });
+                    }
+                }
             }
-            for (array_index, index_expr) in array_indices.iter().zip(index_exprs).rev() {
-                total_index += index_expr * size;
-                size = size * (array_index.upper - array_index.lower);
+            let mut index = 0;
+            let mut base = match children[index].deref() {
+                Node::Var { name, .. } => &mut executor.get_var_mut(name).value,
+                Node::ArrayVar { name, indices, .. } => {
+                    let node = &mut executor.get_var_mut(name).value;
+                    run_array_access(node, as_int_exprs(indices))
+                }
+                Node::RefVar(var) => unsafe { &mut *var.clone() as &mut Box<Node> },
+                _ => runtime_err("Invalid assign statement".to_string()),
+            };
+            let var = run_assign_inner(&mut base, &mut children, &mut index);
+            *var = rhs;
+        }
+        _ => runtime_err("Invalid assign statement".to_string()),
+    };
+}
+
+fn run_assign_inner<'a>(
+    base: &'a mut Box<Node>,
+    children: &mut Vec<Box<Node>>,
+    index: &mut usize,
+) -> &'a mut Box<Node> {
+    *index += 1;
+    if let Node::Object { props, .. } = base.deref_mut() {
+        let base = match children[*index].deref() {
+            Node::Var { name, .. } => {
+                if let Some(Property::Var { value, .. }) = props.get_mut(name) {
+                    value
+                } else {
+                    runtime_err("Invalid property access".to_string());
+                }
             }
-            return values[total_index as usize] = expr;
+            Node::ArrayVar { name, indices, .. } => {
+                if let Some(Property::Var { value, .. }) = props.get_mut(name) {
+                    run_array_access(value, as_int_exprs(indices))
+                } else {
+                    runtime_err("Invalid property access".to_string());
+                }
+            }
+            _ => runtime_err("Invalid property access".to_string()),
         };
+        if *index == children.len() - 1 {
+            return base;
+        } else {
+            return run_assign_inner(base, children, index);
+        }
     }
-    runtime_err("Invalid assign statement".to_string());
+    runtime_err("Invalid property access".to_string());
+}
+
+fn run_array_access<'a>(node: &'a mut Box<Node>, indices: Vec<i64>) -> &'a mut Box<Node> {
+    if let Node::Array { values, shape, .. } = node.deref_mut() {
+        return &mut values[get_array_index(indices, shape)];
+    };
+    runtime_err("Invalid array access".to_string());
+}
+
+fn as_int_exprs(indices: &Vec<Box<Node>>) -> Vec<i64> {
+    indices
+        .iter()
+        .map(|index| match index.deref() {
+            Node::Int { val, .. } => val.clone(),
+            _ => unreachable!(),
+        })
+        .collect::<Vec<i64>>()
 }
 
 fn run_for(
