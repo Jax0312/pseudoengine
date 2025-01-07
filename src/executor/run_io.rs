@@ -16,8 +16,8 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
             Node::Null => print!("null"),
             _ => unimplemented!(),
         }
-        print!("\n")
     }
+    print!("\n")
 }
 
 pub fn run_input(executor: &mut Executor, child: &Box<Node>) {

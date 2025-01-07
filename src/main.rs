@@ -12,7 +12,7 @@ const FILEPATH: &str = "inputs/demo.txt";
 
 fn main() {
     // Read input
-
+    println!("Executing {}", FILEPATH);
     let mut file = File::open(FILEPATH).unwrap();
     let mut buf = String::new();
     file.read_to_string(&mut buf).unwrap();
