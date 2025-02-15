@@ -13,6 +13,7 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
             Node::Int { val, .. } => print!("{}", val.to_string()),
             Node::Real { val, .. } => print!("{}", val.to_string()),
             Node::String { val, .. } => print!("{}", val),
+            Node::Boolean { val, .. } => print!("{}", val.to_string().to_uppercase()),
             Node::Null => print!("null"),
             _ => unimplemented!(),
         }

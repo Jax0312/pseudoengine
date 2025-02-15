@@ -52,6 +52,10 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             val: String::new(),
             pos: Position::invalid(),
         },
+        VariableType::Boolean => Node::Boolean {
+            val: false,
+            pos: Position::invalid(),
+        },
         VariableType::Array(_) => {
             let mut shape = Vec::new();
             let mut capacity = 1;

@@ -1,5 +1,7 @@
-IF IS_NUM("12.5") THEN
-    OUTPUT "Yes"
-ELSE
-    OUTPUT "No"
-ENDIF
+DECLARE logic: BOOLEAN
+
+logic <- TRUE
+
+OUTPUT logic
+
+OUTPUT IS_NUM("12.5")
