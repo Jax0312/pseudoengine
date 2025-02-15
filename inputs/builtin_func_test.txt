@@ -1,0 +1,11 @@
+DECLARE result: BOOLEAN
+result <- TRUE
+
+result <- LEFT("AString", 4) = "AStr"
+result <- RIGHT("AString", 2) = "ng"
+
+IF result THEN
+    OUTPUT "All test case passed"
+ELSE
+    OUTPUT "Some test failed"
+ENDIF

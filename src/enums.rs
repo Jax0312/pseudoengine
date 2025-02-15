@@ -198,3 +198,15 @@ pub enum Node {
     },
     Null,
 }
+
+impl Node {
+    pub fn val_as_str(&self) -> String {
+        match self {
+            Node::Int {val, .. } => val.to_string(),
+            Node::String { val, .. } => val.clone(),
+            Node::Boolean { val, .. } => val.to_string(),
+            Node::Real { val, .. } => val.to_string(),
+            _ => unimplemented!(),
+        }
+    }
+}

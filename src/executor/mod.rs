@@ -2,6 +2,7 @@ mod run_expr;
 mod run_io;
 mod run_stmt;
 mod variable;
+mod builtin_func_def;
 
 use std::ops::Deref;
 

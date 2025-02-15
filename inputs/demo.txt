@@ -10,3 +10,7 @@ pet <- NEW Pet("Hello World!")
 OUTPUT pet.Name
 pet.Name <- "From Snake"
 OUTPUT pet.Name, " No.", 0 + 1
+
+DECLARE x : INTEGER
+x <- x + 5
+OUTPUT "X is ", x
