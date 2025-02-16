@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::{as_number_expr, run_stmt, run_stmts};
-use crate::executor::variable::{Definition, Executor, Property, Scope, Variable};
+use crate::executor::variable::{Definition, Executor, Object, Property, Scope, Variable};
 use crate::executor::{default_var, runtime_err, var_type_of};
 use crate::executor::builtin_func_def::*;
 
@@ -262,7 +262,11 @@ fn run_create_obj(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
                         }
                     }
                     executor.exit_scope();
-                    return Box::new(Node::Object { props });
+                    executor.obj_id += 1;
+                    executor.trigger_gc();
+                    executor.heap.insert(executor.obj_id, Object::new(props));
+                    executor.alloc_count += 1;
+                    return Box::new(Node::Object(executor.obj_id));
                 }
                 runtime_err("Constructor cannot be private".to_string())
             }
@@ -282,14 +286,14 @@ fn run_composite(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<Node
         _ => runtime_err("Invalid base property access".to_string()),
     };
     for child in children.iter().skip(1) {
-        if let Node::Object { props, .. } = base.deref_mut() {
+        if let Node::Object(obj_id) = base.deref_mut() {
             base = match child.deref() {
-                Node::Var { name, .. } => run_prop_access(executor, name, props),
+                Node::Var { name, .. } => run_prop_access(executor, name, obj_id.clone()),
                 Node::ArrayVar { name, indices, .. } => {
-                    run_prop_arr_access(executor, name, indices, props)
+                    run_prop_arr_access(executor, name, indices, obj_id.clone())
                 }
                 Node::FunctionCall { name, params } => {
-                    run_method_call(executor, name, params, props)
+                    run_method_call(executor, name, params, obj_id.clone())
                 }
                 _ => runtime_err("Invalid property access".to_string()),
             };
@@ -303,9 +307,10 @@ fn run_composite(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<Node
 fn run_prop_access(
     executor: &mut Executor,
     name: &String,
-    props: &HashMap<String, Property>,
+    obj_id: u64,
 ) -> Box<Node> {
-    if let Some(Property::Var { value, .. }) = props.get(name) {
+    let object = executor.heap.get_mut(&obj_id).unwrap();
+    if let Some(Property::Var { value, .. }) = object.props.get(name) {
         return value.clone();
     }
     runtime_err("Invalid property access".to_string())
@@ -315,9 +320,10 @@ fn run_prop_arr_access(
     executor: &mut Executor,
     name: &String,
     indices: &Vec<Box<Node>>,
-    props: &HashMap<String, Property>,
+    obj_id: u64,
 ) -> Box<Node> {
-    if let Some(Property::Var { value, .. }) = props.get(name) {
+    let object = executor.heap.get(&obj_id).unwrap().clone();
+    if let Some(Property::Var { value, .. }) = object.props.get(name) {
         return run_array_var_inner(executor, value, indices);
     }
     runtime_err("Invalid property access".to_string())
@@ -327,10 +333,11 @@ fn run_method_call(
     executor: &mut Executor,
     name: &String,
     call_params: &Vec<Box<Node>>,
-    props: &mut HashMap<String, Property>,
+    obj_id: u64,
 ) -> Box<Node> {
     executor.enter_scope();
-    for (name, prop) in props.iter_mut() {
+    let mut object = executor.heap.get(&obj_id).unwrap().clone();
+    for (name, prop) in &mut object.props.iter_mut() {
         if let Property::Var { value, t, .. } = prop {
             let value = Box::new(Node::RefVar(value as *mut Box<Node>));
             executor.declare_var(name, value, t);
@@ -340,7 +347,7 @@ fn run_method_call(
         params: fn_params,
         children,
         ..
-    }) = props.get(name)
+    }) = object.props.get(name)
     {
         run_fn_call_inner(executor, call_params, fn_params, children, false);
         executor.exit_scope();

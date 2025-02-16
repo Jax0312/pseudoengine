@@ -171,92 +171,88 @@ fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
             executor.get_var_mut(name).value = rhs;
         }
         Node::ArrayVar { name, indices, .. } => {
-            let indices = indices
-                .iter()
-                .map(|index| as_number_expr(executor, index))
-                .collect::<Vec<i64>>();
-            let node = &mut executor.get_var_mut(name).value;
-            let var = run_array_access(node, indices);
-            *var = rhs;
+            *run_array_access(executor, name, indices) = rhs;
         }
         Node::RefVar(var) => unsafe { **var = rhs },
         Node::Composite { children } => {
-            let mut children = children.clone();
-            for child in children.iter_mut() {
-                if let Node::ArrayVar { name, indices, .. } = child.deref_mut() {
-                    for index in indices {
-                        *index = Box::new(Node::Int {
-                            val: as_number_expr(executor, index),
-                            pos: Position::invalid(),
-                        });
-                    }
-                }
-            }
             let mut index = 0;
             let mut base = match children[index].deref() {
                 Node::Var { name, .. } => &mut executor.get_var_mut(name).value,
-                Node::ArrayVar { name, indices, .. } => {
-                    let node = &mut executor.get_var_mut(name).value;
-                    run_array_access(node, as_int_exprs(indices))
-                }
+                Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
                 Node::RefVar(var) => unsafe { &mut *var.clone() as &mut Box<Node> },
                 _ => runtime_err("Invalid assign statement".to_string()),
             };
-            let var = run_assign_inner(&mut base, &mut children, &mut index);
-            *var = rhs;
+            if let Node::Object(mut obj_id) = base.deref_mut() {
+                for child in children.iter().skip(1) {
+                    base = match child.deref() {
+                        Node::Var { name, .. } => run_prop_access(executor, obj_id, name),
+                        Node::ArrayVar { name, indices, .. } => {
+                            run_array_prop_access(executor, obj_id, name, indices)
+                        }
+                        _ => runtime_err("Invalid property access".to_string()),
+                    };
+                    if let Node::Object(id) = base.deref_mut() {
+                        obj_id = id.clone();
+                    }
+                }
+            }
+            *base = rhs;
         }
         _ => runtime_err("Invalid assign statement".to_string()),
     };
 }
 
-fn run_assign_inner<'a>(
-    base: &'a mut Box<Node>,
-    children: &mut Vec<Box<Node>>,
-    index: &mut usize,
+fn run_array_access<'a>(
+    executor: &'a mut Executor,
+    name: &String,
+    indices: &Vec<Box<Node>>,
 ) -> &'a mut Box<Node> {
-    *index += 1;
-    if let Node::Object { props, .. } = base.deref_mut() {
-        let base = match children[*index].deref() {
-            Node::Var { name, .. } => {
-                if let Some(Property::Var { value, .. }) = props.get_mut(name) {
-                    value
-                } else {
-                    runtime_err("Invalid property access".to_string());
-                }
-            }
-            Node::ArrayVar { name, indices, .. } => {
-                if let Some(Property::Var { value, .. }) = props.get_mut(name) {
-                    run_array_access(value, as_int_exprs(indices))
-                } else {
-                    runtime_err("Invalid property access".to_string());
-                }
-            }
-            _ => runtime_err("Invalid property access".to_string()),
-        };
-        if *index == children.len() - 1 {
-            return base;
-        } else {
-            return run_assign_inner(base, children, index);
-        }
-    }
-    runtime_err("Invalid property access".to_string());
-}
-
-fn run_array_access<'a>(node: &'a mut Box<Node>, indices: Vec<i64>) -> &'a mut Box<Node> {
+    let indices = indices
+        .iter()
+        .map(|index| match run_expr(executor, index).deref() {
+            Node::Int { val, .. } => val.clone(),
+            _ => unreachable!(),
+        })
+        .collect::<Vec<i64>>();
+    let node = &mut executor.get_var_mut(name).value;
     if let Node::Array { values, shape, .. } = node.deref_mut() {
         return &mut values[get_array_index(indices, shape)];
     };
     runtime_err("Invalid array access".to_string());
 }
 
-fn as_int_exprs(indices: &Vec<Box<Node>>) -> Vec<i64> {
-    indices
+fn run_array_prop_access<'a>(
+    executor: &'a mut Executor,
+    obj_id: u64,
+    name: &String,
+    indices: &Vec<Box<Node>>,
+) -> &'a mut Box<Node> {
+    let indices = indices
         .iter()
-        .map(|index| match index.deref() {
+        .map(|index| match run_expr(executor, index).deref() {
             Node::Int { val, .. } => val.clone(),
             _ => unreachable!(),
         })
-        .collect::<Vec<i64>>()
+        .collect::<Vec<i64>>();
+    let object = executor.heap.get_mut(&obj_id).unwrap();
+    if let Some(Property::Var { value, .. }) = object.props.get_mut(name) {
+        if let Node::Array { values, shape, .. } = value.deref_mut() {
+            return &mut values[get_array_index(indices, shape)];
+        };
+    }
+    runtime_err("Invalid array property access".to_string());
+}
+
+fn run_prop_access<'a>(
+    executor: &'a mut Executor,
+    obj_id: u64,
+    name: &String,
+) -> &'a mut Box<Node> {
+    let object = executor.heap.get_mut(&obj_id).unwrap();
+    if let Some(Property::Var { value, .. }) = object.props.get_mut(name) {
+        return value;
+    }
+    runtime_err("Invalid property access".to_string());
 }
 
 fn run_for(
