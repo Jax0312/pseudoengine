@@ -1,11 +1,9 @@
 DECLARE logic: BOOLEAN
 DECLARE arr1, arr2 : ARRAY[1:2] OF INTEGER
+DECLARE x: REAL
 
-arr1[0] <- 3
-arr2[0] <- 5
+x <- 10
 
-logic <- NOT FALSE AND TRUE
-
-OUTPUT logic
+OUTPUT (-x + (5 * 10))
 
 OUTPUT IS_NUM("12.5")
