@@ -78,6 +78,7 @@ fn run_op(stack: &mut Vec<Box<Node>>, op: &String) -> Box<Node> {
         "+" | "-" | "*" | "/" | "%" | "//" | "_+" | "_-" => run_arithmetic_op(stack, op),
         "<" | ">" | "<=" | ">=" => run_comparison_op(stack, op),
         "=" | "!=" => run_eq_op(stack, op),
+        "&&" | "||" | "!" => run_logical_op(stack, op),
         _ => unimplemented!(),
     }
 }
@@ -110,6 +111,31 @@ fn run_eq_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     }
     
 }
+
+fn run_logical_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
+    let rhs = stack.pop().expect("Invalid operation");
+    let (rhs_val, is_bool) = assert_boolean(&rhs);
+    if !is_bool {
+        runtime_err(format!("Logical operation {} can only be performed on BOOLEAN", op))
+    }
+    
+    Box::from(match op {
+        "!" => Node::Boolean {val: !rhs_val, pos: Position::invalid()},
+        _ => {
+            let lhs = stack.pop().expect("Invalid operation");
+            let (lhs_val, is_bool) = assert_boolean(&lhs);
+            if !is_bool {
+                runtime_err(format!("Logical operation {} can only be performed on BOOLEAN", op))
+            }
+            match op {
+                "&&" => Node::Boolean {val: lhs_val && rhs_val, pos: Position::invalid()},
+                "||" => Node::Boolean {val: lhs_val || rhs_val, pos: Position::invalid()},
+                _ => unreachable!(),
+            }
+        },
+    })
+}
+
 
 fn run_arithmetic_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     let rhs = stack.pop().expect("Invalid operation");
@@ -165,6 +191,13 @@ fn assert_number(node: &Box<Node>) -> (f64, bool) {
         Node::Int { val, .. } => (val as f64, false),
         Node::Real { val, .. } => (val, true),
         _ => runtime_err("Invalid type".to_string()),
+    }
+}
+
+fn assert_boolean(node: &Box<Node>) -> (bool, bool) {
+    match *node.deref() {
+        Node::Boolean { val, .. } => (val, true),
+        _ => (false, false),
     }
 }
 

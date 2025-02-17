@@ -8,7 +8,7 @@ mod lexer;
 mod utils;
 mod executor;
 
-const FILEPATH: &str = "inputs/gc.txt";
+const FILEPATH: &str = "inputs/expression.txt";
 
 fn main() {
     // Read input

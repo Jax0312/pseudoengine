@@ -4,7 +4,7 @@ DECLARE arr1, arr2 : ARRAY[1:2] OF INTEGER
 arr1[0] <- 3
 arr2[0] <- 5
 
-logic <- arr1[0] <> arr2[0]
+logic <- NOT FALSE AND TRUE
 
 OUTPUT logic
 
