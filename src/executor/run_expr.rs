@@ -56,8 +56,13 @@ pub fn get_array_index(indices: Vec<i64>, shape: &Vec<Index>) -> usize {
         runtime_err("Missing indices".to_string())
     }
     for (shape, index) in shape.iter().zip(indices).rev() {
-        total_index += index * size;
-        size = size * (shape.upper - shape.lower);
+        // bound check
+        if index < shape.lower || index > shape.upper {
+            runtime_err(format!("Index out of bounds: {} is not in range of {}..{}", index, shape.lower, shape.upper));
+        }
+        // 1D index calculation, bounds are inclusive hence +1
+        total_index += (index - shape.lower) * size;
+        size = size * (shape.upper - shape.lower + 1);
     }
     total_index as usize
 }

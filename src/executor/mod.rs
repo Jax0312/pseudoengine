@@ -70,7 +70,8 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
                     upper: array.upper,
                     lower: array.lower,
                 });
-                capacity = capacity * (array.upper - array.lower);
+                // index bounds are inclusive
+                capacity = capacity * (array.upper - array.lower + 1);
                 inner_t = array.t.clone();
             }
             Node::Array {

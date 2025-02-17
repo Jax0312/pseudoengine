@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
-use crate::enums::{Index, Node, Position, VariableType};
+use crate::enums::{Node, Position, VariableType};
 use crate::executor::run_expr::run_expr;
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::runtime_err;
 use crate::executor::variable::{Definition, Executor, Property};
 
 use super::run_expr::get_array_index;
-use super::variable::Variable;
-use super::{default_var, var_type_of};
+use super::{default_var};
 
 pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) {
     for node in nodes {
