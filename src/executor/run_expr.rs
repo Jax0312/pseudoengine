@@ -1,11 +1,9 @@
-use std::cmp::PartialEq;
-use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Index, Node, Position, VariableType};
-use crate::executor::run_stmt::{as_number_expr, run_stmt, run_stmts};
-use crate::executor::variable::{Definition, Executor, Object, Property, Scope, Variable};
-use crate::executor::{default_var, runtime_err, var_type_of};
+use crate::executor::run_stmt::{as_number_expr, run_stmt};
+use crate::executor::variable::{Definition, Executor, Object, Property};
+use crate::executor::{runtime_err, var_type_of};
 use crate::executor::builtin_func_def::*;
 
 pub fn run_expr(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
