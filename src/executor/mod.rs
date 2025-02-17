@@ -28,6 +28,7 @@ pub fn runtime_err(message: String) -> ! {
     panic!()
 }
 
+// Get the VariableType of primitive node
 pub fn var_type_of(node: &Box<Node>) -> VariableType {
     match node.deref() {
         Node::Boolean { .. } => VariableType::Boolean,

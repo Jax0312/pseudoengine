@@ -1,3 +1,4 @@
+use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
@@ -76,8 +77,38 @@ fn run_op(stack: &mut Vec<Box<Node>>, op: &String) -> Box<Node> {
     match op {
         "+" | "-" | "*" | "/" | "%" | "//" | "_+" | "_-" => run_arithmetic_op(stack, op),
         "<" | ">" | "<=" | ">=" => run_comparison_op(stack, op),
+        "=" | "!=" => run_eq_op(stack, op),
         _ => unimplemented!(),
     }
+}
+
+
+// function for equality op
+fn run_eq_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
+    let rhs = stack.pop().expect("Invalid operation");
+    let lhs = stack.pop().expect("Invalid operation");
+    
+    match lhs.deref() {
+        Node::Int {..} | Node::Real{..} | Node::Boolean {..} | Node::String {..} => {},
+        Node::Array {..} => runtime_err(format!("Equality check between ARRAY is not a valid operation {}", crate::utils::SUPPORT_MESSAGE)),
+        _ => unimplemented!(),
+    }
+    
+    if var_type_of(&rhs) == var_type_of(&lhs) {
+        
+        // for non-nested structures
+        Box::from(Node::Boolean {
+            val: match op {
+                "=" => rhs.val_as_str() == lhs.val_as_str(),
+                "!=" => rhs.val_as_str() != lhs.val_as_str(),
+                _=> unreachable!(),
+            }, 
+            pos: Position::invalid(),
+        })
+    } else {
+        runtime_err("Type mismatch during equality check".to_string())
+    }
+    
 }
 
 fn run_arithmetic_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
