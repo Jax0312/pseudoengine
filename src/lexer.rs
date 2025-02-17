@@ -103,14 +103,17 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                 // Symbols
                 let mut sym = String::new();
                 sym.push(ch);
-                while let Some(f) = buf.peek() {
-                    match f {
-                        '-' | '=' | '>' => {
-                            sym.push(buf.next().unwrap());
-                            c_pos.col += 1;                            
+                // This is to handle symbol "<-, <>, <= and >="
+                if ch == '<' || ch == '>' {
+                    while let Some(f) = buf.peek() {
+                            match f {
+                                '-' | '=' | '>' => {
+                                    sym.push(buf.next().unwrap());
+                                    c_pos.col += 1;
+                                }
+                                _ => break
+                            }                        
                         }
-                        _ => break
-                    }
                 }
                 tokens.push(Token {
                     t: match_symbol(sym),
@@ -139,10 +142,10 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
             _ => ()
         }
     }
-    // for token in tokens.clone() {
-    //     print!("{:?}, ", token.t);
-    // }
-    // println!();
+    for token in tokens.clone() {
+        print!("{:?}, ", token.t);
+    }
+    println!();
 
     tokens
 }

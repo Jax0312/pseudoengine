@@ -98,7 +98,8 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
                     }
 
                     TToken::LParen => {
-                        last_token_is_pm = false;
+                        // set to true as LParen can also be the first character
+                        last_token_is_pm = true;
                         operators.push(Node::Op {
                             op: "(".to_string(),
                             pos: token.clone().pos,
