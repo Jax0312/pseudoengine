@@ -2,6 +2,7 @@ use crate::enums::{Position, Token};
 use crate::lexer::Lexer;
 use crate::tokens::TToken;
 
+pub const SUPPORT_MESSAGE: &str = "\nIf you believe this behaviour is not in line with Cambridge A-Lvls standard, please email jaxonmoh05@gmail.com";
 
 // Match the next token against a list of expected tokens
 pub fn expect_token(
@@ -26,6 +27,7 @@ pub fn expect_token(
     
 }
 
+// Parser error function, contains position metadata
 pub fn err(message: &str, pos: &Position) -> ! {
     println!("{} at line {} col {}", message, pos.line, pos.col);
     panic!()
