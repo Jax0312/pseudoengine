@@ -210,6 +210,7 @@ impl Node {
             Node::String { val, .. } => val.clone(),
             Node::Boolean { val, .. } => val.to_string(),
             Node::Real { val, .. } => val.to_string(),
+            Node::Date { val, .. } => val.to_string(),
             _ => unimplemented!(),
         }
     }

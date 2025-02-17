@@ -1,4 +1,4 @@
-use rand::random;
+use chrono::{Datelike, NaiveDate};
 use crate::enums::{Node, Position};
 use crate::executor::runtime_err;
 
@@ -121,6 +121,42 @@ pub fn builtin_func_rand(params: &Vec<String>) -> Box<Node> {
     }
 
     Box::new(Node::Real {val: rand::random_range(0.0..(upper as f64)), pos: Position::invalid()})
+}
+
+pub fn builtin_func_day(params: &Vec<String>) -> Box<Node> {
+    let date = NaiveDate::parse_from_str(params[0].as_str(), "%Y-%m-%d").unwrap();
+    Box::new(Node::Int {val: date.day() as i64, pos:Position::invalid()})
+}
+
+pub fn builtin_func_month(params: &Vec<String>) -> Box<Node> {
+    let date = NaiveDate::parse_from_str(params[0].as_str(), "%Y-%m-%d").unwrap();
+    Box::new(Node::Int {val: date.month() as i64, pos:Position::invalid()})
+}
+
+pub fn builtin_func_year(params: &Vec<String>) -> Box<Node> {
+    let date = NaiveDate::parse_from_str(params[0].as_str(), "%Y-%m-%d").unwrap();
+    Box::new(Node::Int {val: date.year() as i64, pos:Position::invalid()})
+}
+
+pub fn builtin_func_day_index(params: &Vec<String>) -> Box<Node> {
+    let date = NaiveDate::parse_from_str(params[0].as_str(), "%Y-%m-%d").unwrap();
+    // Sunday is 1 for CIE
+    Box::new(Node::Int {val: (date.weekday().num_days_from_sunday() + 1) as i64, pos:Position::invalid()})
+}
+pub fn builtin_func_set_date(params: &Vec<String>) -> Box<Node> {
+
+    let day = params[0].clone();
+    let month = params[1].clone();
+    let year = params[2].clone();
+    
+    match NaiveDate::parse_from_str(&format!("{}/{}/{}", year, month, day), "%Y/%m/%d") {
+        Ok(date) => Box::new(Node::Date {val: date, pos:Position::invalid()}),
+        Err(_) => runtime_err("Date given is not valid".to_string()),
+    }
+}
+
+pub fn builtin_func_today(params: &Vec<String>) -> Box<Node> {
+    Box::new(Node::Date {val: chrono::offset::Local::now().date_naive(), pos:Position::invalid()})
 }
 
 

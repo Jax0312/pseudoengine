@@ -34,6 +34,7 @@ pub fn var_type_of(node: &Box<Node>) -> VariableType {
         Node::Int { .. } => VariableType::Integer,
         Node::Real { .. } => VariableType::Real,
         Node::String { .. } => VariableType::String,
+        Node::Date { .. } => VariableType::Date,
         _ => unimplemented!(),
     }
 }

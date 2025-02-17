@@ -1,8 +1,32 @@
+DECLARE dummy_string: STRING
+DECLARE dummy_date: DATE
+dummy_string <- "AString"
+dummy_date <- 03/12/2005
+
 DECLARE result: BOOLEAN
 result <- TRUE
 
-result <- LEFT("AString", 4) = "AStr"
-result <- RIGHT("AString", 2) = "ng"
+result <- LEFT(dummy_string, 4) = "AStr"
+result <- RIGHT(dummy_string, 2) = "ng"
+result <- MID(dummy_string, 2, 5) = "Strin"
+result <- LENGTH(dummy_string) = 7
+result <- TO_UPPER(dummy_string) = "ASTRING"
+result <- TO_LOWER(dummy_string) = "astring"
+result <- NUM_TO_STR(66) = "66"
+result <- NUM_TO_STR(66.98) = "66.98"
+result <- STR_TO_NUM("66.98") = 66.98
+result <- STR_TO_NUM("66") = 66
+result <- IS_NUM("57.5") AND NOT IS_NUM("abc")
+result <- ASC("A") = 65
+result <- CHR(65) = "A"
+result <- INT(66.98) = 66
+// RAND skipped
+result <- DAY(dummy_date) = 3
+result <- MONTH(dummy_date) = 12
+result <- YEAR(dummy_date) = 2005
+result <- DAYINDEX(dummy_date) = 7
+result <- SETDATE(3, 12, 2005) = dummy_date
+// TODAY skipped
 
 IF result THEN
     OUTPUT "All test case passed"

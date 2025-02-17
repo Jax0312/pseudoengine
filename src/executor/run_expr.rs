@@ -89,7 +89,7 @@ fn run_eq_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     let lhs = stack.pop().expect("Invalid operation");
     
     match lhs.deref() {
-        Node::Int {..} | Node::Real{..} | Node::Boolean {..} | Node::String {..} => {},
+        Node::Int {..} | Node::Real{..} | Node::Boolean {..} | Node::String {..} | Node::Date {..} => {},
         Node::Array {..} => runtime_err(format!("Equality check between ARRAY is not a valid operation {}", crate::utils::SUPPORT_MESSAGE)),
         _ => unimplemented!(),
     }
@@ -247,12 +247,12 @@ fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Nod
         "CHR" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_chr),
         "INT" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_int),
         "RAND" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_rand),
-        "DAY" => todo!(),
-        "MONTH" => todo!(),
-        "YEAR" => todo!(),
-        "DAYINDEX" => todo!(),
-        "SETDATE" => todo!(),
-        "TODAY" => todo!(),
+        "DAY" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day),
+        "MONTH" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_month),
+        "YEAR" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_year),
+        "DAYINDEX" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day_index),
+        "SETDATE" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer, VariableType::Integer, VariableType::Integer], &builtin_func_set_date),
+        "TODAY" => return run_fn_call_builtin(executor, call_params, &vec![], &builtin_func_today),
         "EOF" => todo!(),
         _ => {}
     }

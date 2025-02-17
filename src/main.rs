@@ -8,7 +8,7 @@ mod lexer;
 mod utils;
 mod executor;
 
-const FILEPATH: &str = "inputs/expression.txt";
+const FILEPATH: &str = "inputs/builtin_func_test.txt";
 
 fn main() {
     // Read input
