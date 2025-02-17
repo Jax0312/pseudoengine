@@ -61,10 +61,11 @@ pub enum Node {
         base: Box<Node>,
         children: Vec<Box<Node>>,
     },
-    Object {
-        // name: String,
-        props: HashMap<String, Property>,
-    },
+    // Object {
+    //     // name: String,
+    //     props: HashMap<String, Property>,
+    // },
+    Object(u64),
     Function {
         name: Box<Node>,
         params: Vec<Box<Node>>,

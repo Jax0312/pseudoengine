@@ -1,0 +1,13 @@
+CLASS Pet
+    PUBLIC Name : STRING
+    PUBLIC PROCEDURE NEW(GivenName : STRING)
+        Name <- GivenName
+    ENDPROCEDURE
+ENDCLASS
+
+DECLARE pet: Pet
+
+FOR i <- 1 TO 10 STEP 1
+    pet <- NEW Pet(NUM_TO_STR(i))
+    OUTPUT pet.Name
+NEXT i

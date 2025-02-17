@@ -1,16 +1,16 @@
+mod builtin_func_def;
 mod run_expr;
 mod run_io;
 mod run_stmt;
 mod variable;
-mod builtin_func_def;
 
 use std::ops::Deref;
 
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
 use crate::executor::variable::Executor;
-use variable::Definition;
 pub use variable::Property;
+use variable::{Definition, Object};
 
 pub fn run(nodes: Vec<Box<Node>>) {
     let mut executor = Executor::new();
@@ -77,7 +77,11 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
         }
         VariableType::Custom(name) => match executor.get_def(name) {
             Definition::Class { name, props } => {
-                return Box::new(Node::Object { props });
+                // executor.obj_id += 1;
+                // executor.alloc_count += 1;
+                // executor.heap.insert(executor.obj_id, Object { props });
+                // return Box::new(Node::Object(executor.obj_id));
+                return Box::new(Node::Object(0));
             }
             _ => runtime_err("Invalid type".to_string()),
         },
