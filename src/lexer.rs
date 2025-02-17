@@ -1,9 +1,10 @@
-use std::iter::Peekable;
 use crate::enums::{Position, Token, VariableType};
+use crate::tokens::TToken;
+use crate::utils::err;
+use chrono::NaiveDate;
+use std::iter::Peekable;
 use std::str::Chars;
 use std::vec::IntoIter;
-use crate::tokens::TToken;
-use crate::utils::{err};
 
 pub type Lexer = Peekable<IntoIter<Token>>;
 
@@ -32,31 +33,78 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
             }
             '0'..='9' => {
                 let mut number = String::new();
+                let mut dot_count = 0;
+                let mut slash_count = 0;
+                // flag for possibility literal is a date
+                let mut possible_date = false;
+                // save start position cuz it might be used
+                let mut c_pos_start = c_pos;
                 number.push(ch);
-                while let Some(f) = buf.peek() {
-                    if f.is_numeric() || *f == '.' {
-                        number.push(buf.next().unwrap());
-                        c_pos.col += 1;
-                    } else {
-                        break;
+
+                while let Some(f) = &buf.peek() {
+                    match f {
+                        '0'..='9' => {
+                            number.push(buf.next().unwrap());
+                            c_pos.col += 1;
+                        }
+                        '/' => {
+                            slash_count += 1;
+                            possible_date = slash_count == 2 && dot_count == 0;
+                            number.push(buf.next().unwrap());
+                            c_pos.col += 1;
+                        }
+                        '.' => {
+                            dot_count += 1;
+                            number.push(buf.next().unwrap());
+                            c_pos.col += 1;
+                        }
+                        _ => break,
                     }
                 }
 
-                let dot_count = number.chars().filter(|c| *c == '.').count();
-                match dot_count {
-                    0 => tokens.push(Token {
-                        t: TToken::IntegerLit(number.parse::<i64>().unwrap()),
-                        pos: c_pos,
-                    }),
-                    1 => tokens.push(Token {
-                        t: TToken::RealLit(number.parse::<f64>().unwrap()),
-                        pos: c_pos,
-                    }),
-                    _ => {
-                        println!("{:?}", tokens);
-                        err("Invalid value", &c_pos)   
-                    },
+                if possible_date {
+                    if let Ok(date) = NaiveDate::parse_from_str(&*number, "%d/%m/%Y") {
+                        tokens.push(Token {
+                            t: TToken::DateLit(date),
+                            pos: c_pos,
+                        })
+                    } else {
+                        err("Invalid DATE literal", &c_pos)
+                    }
+                } else {
+                    for temp in number.split('/').into_iter() {
+                        match temp.chars().filter(|c| *c == '.').count() {
+                            0 => {
+                                tokens.push(Token {
+                                    t: TToken::IntegerLit(temp.parse::<i64>().unwrap()),
+                                    pos: c_pos_start,
+                                });
+                                // +1 cuz there might be '/', being off by 1 at the end doesn't matter as c_pos will be accurate
+                                c_pos_start.col += temp.len() + 1
+                            }
+                            1 => {
+                                tokens.push(Token {
+                                    t: TToken::RealLit(temp.parse::<f64>().unwrap()),
+                                    pos: c_pos,
+                                });
+                                c_pos_start.col += temp.len() + 1
+                            }
+                            _ => {
+                                println!("{:?}", tokens);
+                                err("Invalid value", &c_pos)
+                            }
+                        }
+                        tokens.push(Token {
+                            t: TToken::Operator("/".to_string()),
+                            pos: c_pos,
+                        })
+                    }
+                    if number.chars().last().unwrap() != '/' {
+                        // remove the extra '/' operator
+                        tokens.pop();
+                    }
                 }
+
             }
             'a'..='z' | 'A'..='Z' | '_' => {
                 let mut word = String::new();
@@ -68,13 +116,16 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                     word.push(buf.next().unwrap());
                     c_pos.col += 1;
                 }
-                
+
                 tokens.push(Token {
                     t: match_word(word.clone()),
                     // Point back to start of word
-                    pos: Position {line: c_pos.line, col: c_pos.col - word.len() + 1},
+                    pos: Position {
+                        line: c_pos.line,
+                        col: c_pos.col - word.len() + 1,
+                    },
                 })
-            },
+            }
             '/' => {
                 if let Some('/') = buf.peek() {
                     // Comment detected, ignore until \n
@@ -82,22 +133,27 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                         buf.next();
                     }
                 } else {
-                    tokens.push(Token {t: TToken::Operator("/".to_string()), pos: c_pos})
+                    tokens.push(Token {
+                        t: TToken::Operator("/".to_string()),
+                        pos: c_pos,
+                    })
                 }
-            },
+            }
             '"' => {
-               // String literals
+                // String literals
                 let mut lit = String::new();
-                while let Some(c) = buf.next()  {
+                while let Some(c) = buf.next() {
                     c_pos.col += 1;
                     if c == '"' {
-                        break
+                        break;
                     }
                     lit.push(c);
                 }
-                
-                tokens.push(Token {t: TToken::StringLit(lit), pos: c_pos});
-                
+
+                tokens.push(Token {
+                    t: TToken::StringLit(lit),
+                    pos: c_pos,
+                });
             }
             _ => {
                 // Symbols
@@ -106,40 +162,44 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                 // This is to handle symbol "<-, <>, <= and >="
                 if ch == '<' || ch == '>' {
                     while let Some(f) = buf.peek() {
-                            match f {
-                                '-' | '=' | '>' => {
-                                    sym.push(buf.next().unwrap());
-                                    c_pos.col += 1;
-                                }
-                                _ => break
-                            }                        
+                        match f {
+                            '-' | '=' | '>' => {
+                                sym.push(buf.next().unwrap());
+                                c_pos.col += 1;
+                            }
+                            _ => break,
                         }
+                    }
                 }
                 tokens.push(Token {
                     t: match_symbol(sym),
                     pos: c_pos.clone(),
                 })
-                
-            },
+            }
         }
     }
-    
+
     // EOF token added to signify source file end for error reporting purpose
     c_pos.col += 1;
-    tokens.push( Token { t: TToken::EOF, pos: c_pos } );
-    
-    // Second pass to reduce multiple newline and identify array 
+    tokens.push(Token {
+        t: TToken::EOF,
+        pos: c_pos,
+    });
+
+    // Second pass to reduce multiple newline and identify array
     let mut temp_tokens = tokens.into_iter().peekable();
     tokens = vec![];
     while temp_tokens.peek().is_some() {
         tokens.push(temp_tokens.next().unwrap());
         match tokens.last().unwrap().clone().t {
             TToken::Newline => {
-                while temp_tokens.peek().is_some() && temp_tokens.peek().unwrap().t == TToken::Newline {
+                while temp_tokens.peek().is_some()
+                    && temp_tokens.peek().unwrap().t == TToken::Newline
+                {
                     temp_tokens.next();
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
     }
     for token in tokens.clone() {
@@ -150,10 +210,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
     tokens
 }
 
-
-
 fn match_symbol(sym: String) -> TToken {
-    
     match sym.as_str() {
         "+" | "-" | "*" | "/" => TToken::Operator(sym.clone()),
         "<>" => TToken::Operator("!=".to_string()),
@@ -167,8 +224,7 @@ fn match_symbol(sym: String) -> TToken {
         "," => TToken::Comma,
         "^" => TToken::Caret,
         "." => TToken::Period,
-        _ => TToken::Unknown
-        
+        _ => TToken::Unknown,
     }
 }
 
@@ -234,5 +290,4 @@ fn match_word(word: String) -> TToken {
         "DATE" => TToken::VarType(VariableType::Date),
         _ => TToken::Identifier(word.to_lowercase()),
     }
-    
 }

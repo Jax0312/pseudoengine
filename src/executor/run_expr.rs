@@ -144,7 +144,7 @@ fn run_unary_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
         "_+" => val,
         _ => unreachable!(),
     };
-    
+
     if is_real {
         Box::from(Node::Real {
             val: res,
@@ -156,7 +156,7 @@ fn run_unary_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
             pos: Position::invalid(),
         })
     }
-    
+
 }
 
 fn run_arithmetic_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
@@ -212,7 +212,7 @@ fn assert_number(node: &Box<Node>) -> (f64, bool) {
     match *node.deref() {
         Node::Int { val, .. } => (val as f64, false),
         Node::Real { val, .. } => (val, true),
-        _ => runtime_err("Invalid type".to_string()),
+        _ => runtime_err("Arithmetic operation can only be performed on numbers".to_string()),
     }
 }
 

@@ -60,6 +60,10 @@ pub fn parse_expression(lexer: &mut Lexer, stop: &[TToken]) -> (Box<Node>, Token
                     TToken::BoolLit(val)  => {
                         output.push(Node::Boolean {val, pos: token.pos});
                         last_token_is_pm = false;
+                    },
+                    TToken::DateLit(val) => {
+                        output.push(Node::Date {val, pos: token.pos});
+                        last_token_is_pm = false;
                     }
                     TToken::Operator(ref op) => {
                         let mut _op = op.clone();

@@ -1,3 +1,4 @@
+use chrono::{NaiveDate};
 use crate::enums::{VariableType};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -7,6 +8,7 @@ pub enum TToken {
     StringLit(String),
     IntegerLit(i64),
     RealLit(f64),
+    DateLit(NaiveDate),
 
     // Symbols
     LParen,

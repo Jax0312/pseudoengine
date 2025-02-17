@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
-use crate::{executor::Property, tokens::TToken};
+use chrono::NaiveDate;
+use crate::{tokens::TToken};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -93,6 +92,10 @@ pub enum Node {
     },
     Real {
         val: f64,
+        pos: Position,
+    },
+    Date {
+        val: NaiveDate,
         pos: Position,
     },
     Var {

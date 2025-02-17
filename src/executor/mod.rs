@@ -5,12 +5,11 @@ mod run_stmt;
 mod variable;
 
 use std::ops::Deref;
-
+use chrono::NaiveDate;
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
 use crate::executor::variable::Executor;
-pub use variable::Property;
-use variable::{Definition, Object};
+use variable::{Definition};
 
 pub fn run(nodes: Vec<Box<Node>>) {
     let mut executor = Executor::new();
@@ -55,6 +54,10 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
         },
         VariableType::Boolean => Node::Boolean {
             val: false,
+            pos: Position::invalid(),
+        },
+        VariableType::Date => Node::Date {
+            val: NaiveDate::default(),
             pos: Position::invalid(),
         },
         VariableType::Array(_) => {

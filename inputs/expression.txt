@@ -1,8 +1,6 @@
-
-DECLARE x: REAL
-
-x <- 10
-
-OUTPUT (-5 +10) + (5*10)
+DECLARE x, y: DATE
+x <- 10/5/2005
+y <- 15/5/2005
+OUTPUT x + y
 
 

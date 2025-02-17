@@ -14,6 +14,7 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
             Node::Real { val, .. } => print!("{}", val.to_string()),
             Node::String { val, .. } => print!("{}", val),
             Node::Boolean { val, .. } => print!("{}", val.to_string().to_uppercase()),
+            Node::Date {val, ..} => print!("{}", val.format("%d-%m-%Y").to_string()),
             Node::Null => print!("null"),
             _ => unimplemented!(),
         }
