@@ -1,7 +1,1 @@
-DECLARE arr1 : ARRAY[1:4, 2:5] OF INTEGER
-DECLARE arr2 : ARRAY[1:4] OF INTEGER
-arr1[1, 2] <- 10
-arr1[4, 5] <- 50
-
-OUTPUT arr1[4, 5]
-
+OUTPUT "Stirng" & " Join"

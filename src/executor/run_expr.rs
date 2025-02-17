@@ -83,10 +83,22 @@ fn run_op(stack: &mut Vec<Box<Node>>, op: &String) -> Box<Node> {
         "<" | ">" | "<=" | ">=" => run_comparison_op(stack, op),
         "=" | "!=" => run_eq_op(stack, op),
         "&&" | "||" | "!" => run_logical_op(stack, op),
+        "&" => run_concat_op(stack),
         _ => unimplemented!(),
     }
 }
 
+fn run_concat_op(stack: &mut Vec<Box<Node>>) -> Box<Node> {
+    let rhs = stack.pop().expect("Invalid operation");
+    let lhs = stack.pop().expect("Invalid operation");
+    
+    if var_type_of(&rhs) == VariableType::String && var_type_of(&rhs) == var_type_of(&lhs) {
+        Box::from(Node::String { val: format!("{}{}", lhs.val_as_str(), rhs.val_as_str()), pos: Position::invalid() })
+    } else {
+        runtime_err("'&' can only be performed on STRING".to_string())
+    }
+    
+}
 
 // function for equality op
 fn run_eq_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
