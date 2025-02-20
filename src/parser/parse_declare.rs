@@ -3,6 +3,43 @@ use crate::lexer::Lexer;
 use crate::tokens::TToken;
 use crate::utils::{err, expect_token};
 
+pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
+    // Skip Type token
+    lexer.next();
+    let name;
+    if let TToken::Identifier(_name) = expect_token(lexer, &[TToken::Identifier("".to_string())], "Identifier").t {name = _name;} else {unreachable!()}
+    // clear newline
+    let next_token = expect_token(lexer, &[TToken::Newline, TToken::Operator("=".to_string())], "DECLARE or '='");
+    match next_token.t  {
+        TToken::Newline => {
+            // This is a record data type pattern
+            expect_token(lexer, &[TToken::Declare], "DECLARE");
+            let mut fields = Vec::new();
+            loop {
+                fields.push(parse_declaration(lexer));
+                // parse_declaration does not consume the trailing newline token
+                if lexer.peek().unwrap().t == TToken::Newline {
+                    lexer.next();   
+                }
+                match expect_token(lexer, &[TToken::Declare, TToken::EndType], "EndType").t {
+                    TToken::EndType => break, 
+                    TToken::Declare => continue,
+                    _ => unreachable!(),
+                }
+            }
+            Box::from(Node::Record {name, children: fields})
+        },
+        TToken::Operator(op) => {
+            if op != "=" {
+                err("Expected '='", &next_token.pos)
+            }
+            todo!()
+        },
+        _ => unreachable!()
+    }
+    
+}
+
 pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {
     // Skip Declare token
     lexer.next();
@@ -41,7 +78,7 @@ pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
     } else if current.t != TToken::Colon {
         err(": expected", &current.pos);
     }
-
+    
     // Handle variable type
     match lexer.next().unwrap() {
         Token { t: TToken::VarType(vt), pos: _ } => Box::new(Node::Declare {
@@ -53,7 +90,7 @@ pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
             children: vars,
         }),
         Token { t: TToken::Identifier(name), pos: _ }=> Box::new(Node::Declare {
-            t: Box::from(VariableType::Custom((name))),
+            t: Box::from(VariableType::Custom(name)),
             children: vars,
         }),
         Token { t: _, pos} => err("Type expected", &pos),

@@ -412,7 +412,10 @@ fn run_prop_access(
     name: &String,
     obj_id: u64,
 ) -> Box<Node> {
-    let object = executor.heap.get_mut(&obj_id).unwrap();
+    let object = match executor.heap.get_mut(&obj_id) {
+        Some(object) => object,
+        None => runtime_err("Tried to access a null value".to_string()) 
+    };
     if let Some(Property::Var { value, .. }) = object.props.get(name) {
         return value.clone();
     }

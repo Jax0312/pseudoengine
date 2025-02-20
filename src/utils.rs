@@ -20,7 +20,7 @@ pub fn expect_token(
                 return next;
             }
         }
-        err(&format!("{} expected", message), &next.pos);
+        err(&format!("{} expected. {:?} found", message, next), &next.pos);
     }
     
     unreachable!()

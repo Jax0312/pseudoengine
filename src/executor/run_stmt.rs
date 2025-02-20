@@ -7,8 +7,8 @@ use crate::executor::run_io::{run_input, run_output};
 use crate::executor::runtime_err;
 use crate::executor::variable::{Definition, Executor, Property};
 
+use super::default_var;
 use super::run_expr::get_array_index;
-use super::{default_var};
 
 pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) {
     for node in nodes {
@@ -44,6 +44,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
             base,
             children,
         } => run_class(executor, name, base, children),
+        Node::Record { name, children } => run_record(executor, name, children),
         Node::Expression(_) => {
             run_expr(executor, node);
         }
@@ -71,6 +72,27 @@ fn run_function(
     runtime_err("Invalid function declaration".to_string())
 }
 
+fn run_record(executor: &mut Executor, name: &String, children: &Vec<Box<Node>>) {
+    let mut props = HashMap::new();
+    for node in children.clone() {
+        match node.deref() {
+            Node::Null => (),
+            _ => {
+                for (name, prop) in run_composite_prop(executor, &node, false).into_iter() {
+                    props.insert(name, prop);
+                }
+            }
+        }
+    }
+    executor.declare_def(
+        name,
+        Definition::Record {
+            name: name.clone(),
+            props,
+        },
+    )
+}
+
 fn run_class(
     executor: &mut Executor,
     name: &Box<Node>,
@@ -82,8 +104,9 @@ fn run_class(
         match node.deref() {
             Node::Null => (),
             _ => {
-                let (name, prop) = run_class_prop(executor, &node, false);
-                props.insert(name, prop);
+                for (name, prop) in run_composite_prop(executor, &node, false).into_iter() {
+                    props.insert(name, prop);
+                }
             }
         }
     }
@@ -99,7 +122,11 @@ fn run_class(
     runtime_err("Invalid function declaration".to_string())
 }
 
-fn run_class_prop(executor: &mut Executor, prop: &Box<Node>, private: bool) -> (String, Property) {
+fn run_composite_prop(
+    executor: &mut Executor,
+    prop: &Box<Node>,
+    private: bool,
+) -> Vec<(String, Property)> {
     match prop.deref() {
         Node::Procedure {
             name,
@@ -107,28 +134,28 @@ fn run_class_prop(executor: &mut Executor, prop: &Box<Node>, private: bool) -> (
             children,
         } => {
             if let Node::String { val, .. } = name.deref() {
-                return (
+                return vec![(
                     val.clone(),
                     Property::Procedure {
                         private,
                         params: params.clone(),
                         children: children.clone(),
                     },
-                );
+                )];
             }
             unreachable!()
         }
-        Node::Declare { children, t } => {
-            return (
-                children[0].clone(),
+        Node::Declare { children, t } => children.iter().map(|var_name| {
+            (
+                var_name.clone(),
                 Property::Var {
                     private,
                     value: default_var(executor, t),
                     t: t.clone(),
                 },
-            );
-        }
-        Node::Private(node) => return run_class_prop(executor, node, true),
+            )
+        }).collect(),
+        Node::Private(node) => return run_composite_prop(executor, node, true),
         _ => runtime_err("Invalid class declaration".to_string()),
     }
 }

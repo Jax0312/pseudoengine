@@ -105,6 +105,11 @@ pub enum Node {
     RefVar(*mut Box<Node>),
     Reference(Box<Node>),
     Dereference(Box<Node>),
+    // Composite type 'Record'
+    Record {
+        name: String,
+        children: Vec<Box<Node>>,
+    },
     Composite {
         children: Vec<Box<Node>>,
     },

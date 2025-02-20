@@ -3,7 +3,7 @@ use std::vec;
 use crate::enums::{Node, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_class::parse_class;
-use crate::parser::parse_declare::parse_declare;
+use crate::parser::parse_declare::{parse_declare, parse_user_defined_data};
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_func::{parse_function, parse_procedure, parse_return};
 use crate::parser::parse_identifier::parse_identifier;
@@ -60,6 +60,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::GetRecord => parse_get_record(lexer),
         TToken::PutRecord => parse_put_record(lexer),
         TToken::If => parse_if(lexer),
+        TToken::Type => parse_user_defined_data(lexer),
         // TToken::Case => parse_case(lexer),
         TToken::Return => parse_return(lexer),
         TToken::Identifier(_) => {

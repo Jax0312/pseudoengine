@@ -69,6 +69,10 @@ pub enum Definition {
         name: String,
         props: HashMap<String, Property>,
     },
+    Record {
+        name: String,
+        props: HashMap<String, Property>,
+    }
 }
 
 impl Executor {
@@ -228,6 +232,23 @@ fn gc_mark(heap: &mut HashMap<u64, Object>, obj_id: u64) {
             }
         }
     }
+}
+pub fn initialise_record(executor: &mut Executor, name: &String) -> Box<Node> {
+    if let Definition::Record { props, .. } = executor.get_def(name) {
+        executor.enter_scope();
+        for (name, prop) in props.iter() {
+            if let Property::Var { value, t, .. } = prop {
+                executor.declare_var(name, value.clone(), t);
+            }
+        }
+        executor.exit_scope();
+        executor.obj_id += 1;
+        executor.trigger_gc();
+        executor.heap.insert(executor.obj_id, Object::new(props));
+        executor.alloc_count += 1;
+        return Box::new(Node::Object(executor.obj_id));
+    }
+    unreachable!()
 }
 
 impl Object {
