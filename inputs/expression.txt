@@ -5,6 +5,6 @@ DECLARE tday: Weekday
 
 tday <- Monday
 
-IF 5 = tday THEN
-    OUTPUT "HEHE"
+IF Monday = tday THEN
+    OUTPUT tday
 ENDIF
