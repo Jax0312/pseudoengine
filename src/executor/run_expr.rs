@@ -317,7 +317,7 @@ fn run_fn_call_inner(
         if let Node::Declare { t, children } = fn_param.deref() {
             let expr = run_expr(executor, call_param);
             if var_type_of(&expr) == *t.deref() {
-                executor.declare_var(&children[0], expr, t);
+                executor.declare_var(&children[0], expr, t, true);
             } else {
                 runtime_err("Parameter type mismatch".to_string())
             }
@@ -354,7 +354,7 @@ fn run_create_obj(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
                     executor.enter_scope();
                     for (name, prop) in props.iter() {
                         if let Property::Var { value, t, .. } = prop {
-                            executor.declare_var(name, value.clone(), t);
+                            executor.declare_var(name, value.clone(), t, true);
                         }
                     }
                     run_fn_call_inner(executor, params, fn_params, children, false);
@@ -446,7 +446,7 @@ fn run_method_call(
     for (name, prop) in &mut object.props.iter_mut() {
         if let Property::Var { value, t, .. } = prop {
             let value = Box::new(Node::RefVar(value as *mut Box<Node>));
-            executor.declare_var(name, value, t);
+            executor.declare_var(name, value, t, true);
         }
     }
     if let Some(Property::Procedure {

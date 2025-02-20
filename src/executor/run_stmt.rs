@@ -19,6 +19,7 @@ pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) {
 pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
     match node.deref() {
         Node::Declare { t, children } => run_declare(executor, children, t),
+        Node::Const { name, val, .. } => run_const(executor, name, val),
         Node::If {
             cond,
             true_body,
@@ -160,10 +161,22 @@ fn run_composite_prop(
     }
 }
 
+fn run_const(executor: &mut Executor, identifier: &String, val: &Box<Node>) {
+    let t = match **val {
+        Node::String { .. } => VariableType::String,
+        Node::Int { .. } => VariableType::Integer,
+        Node::Real { .. } => VariableType::Real,
+        Node::Boolean { .. } => VariableType::Boolean,
+        Node::Date { .. } => VariableType::Date,
+        _ => unreachable!()
+    };
+    executor.declare_var(identifier, val.clone(), &Box::from(t), false);
+}
+
 fn run_declare(executor: &mut Executor, identifiers: &[String], t: &Box<VariableType>) {
     for identifier in identifiers {
         let value = default_var(executor, t);
-        executor.declare_var(identifier, value, t);
+        executor.declare_var(identifier, value, t, true);
     }
 }
 
@@ -304,6 +317,7 @@ fn run_for(
                     pos: Position::invalid(),
                 }),
                 &Box::new(VariableType::Integer),
+                true
             );
             while start <= end {
                 executor.set_var(

@@ -60,10 +60,6 @@ pub enum Node {
         base: Box<Node>,
         children: Vec<Box<Node>>,
     },
-    // Object {
-    //     // name: String,
-    //     props: HashMap<String, Property>,
-    // },
     Object(u64),
     Function {
         name: Box<Node>,
@@ -100,6 +96,11 @@ pub enum Node {
     },
     Var {
         name: String,
+        pos: Position,
+    },
+    Const {
+        name: String,
+        val: Box<Node>,
         pos: Position,
     },
     RefVar(*mut Box<Node>),

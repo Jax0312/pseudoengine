@@ -1,4 +1,4 @@
-use crate::enums::{Array, Node, Token, VariableType};
+use crate::enums::{Array, Node, Position, Token, VariableType};
 use crate::lexer::Lexer;
 use crate::tokens::TToken;
 use crate::utils::{err, expect_token};
@@ -38,6 +38,36 @@ pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
         _ => unreachable!()
     }
     
+}
+
+pub fn parse_constant(lexer: &mut Lexer) -> Box<Node> {
+    // Skip Constant token
+    lexer.next();
+    let name;
+    let mut val= Box::from(Node::Null);
+    if let TToken::Identifier(_name) = expect_token(lexer, &[TToken::Identifier("".to_string())], "Identifier").t {
+        name = _name
+    } else {unreachable!()}
+    if let Token{ t, pos } = expect_token(lexer, &[TToken::Operator("".to_string())], "'='") {
+        if let TToken::Operator(_op) = t {
+            if _op != "=" {
+                err("'=' expected", &pos)
+            }
+        } else {unreachable!()}   
+    }
+    
+    if let token = lexer.next().unwrap() {
+        val = Box::from(match token.t {
+            TToken::IntegerLit(val) => Node::Int{ val, pos: token.pos },
+            TToken::RealLit(val) => Node::Real{ val, pos: token.pos },
+            TToken::StringLit(val) => Node::String{ val, pos: token.pos },
+            TToken::DateLit(val) => Node::Date{ val, pos: token.pos },
+            TToken::BoolLit(val) => Node::Boolean{ val, pos: token.pos },
+            _ => err("Literal value expected", &token.pos)    
+        })
+    }
+    
+    Box::from(Node::Const { name, val, pos: Position::invalid() })
 }
 
 pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {

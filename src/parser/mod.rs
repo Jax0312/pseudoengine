@@ -3,7 +3,7 @@ use std::vec;
 use crate::enums::{Node, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_class::parse_class;
-use crate::parser::parse_declare::{parse_declare, parse_user_defined_data};
+use crate::parser::parse_declare::{parse_constant, parse_declare, parse_user_defined_data};
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_func::{parse_function, parse_procedure, parse_return};
 use crate::parser::parse_identifier::parse_identifier;
@@ -47,6 +47,7 @@ pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
 pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
     match lexer.peek().unwrap().t {
         TToken::Declare => parse_declare(lexer),
+        TToken::Constant => parse_constant(lexer),
         TToken::While => parse_while(lexer),
         TToken::For => parse_for(lexer),
         TToken::Repeat => parse_repeat(lexer),

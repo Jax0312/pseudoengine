@@ -1,26 +1,2 @@
-TYPE User
-    DECLARE name, lastName: STRING
-    DECLARE arr1: ARRAY[1:4] OF INTEGER
-ENDTYPE
-
-CLASS UserType
-
-    DECLARE name: STRING
-    DECLARE age: INTEGER
-
-    PUBLIC PROCEDURE NEW(GivenName : STRING, GivenAge: INTEGER)
-       name ← GivenName
-       age <- GivenAge
-    ENDPROCEDURE
-
-ENDCLASS
-
-DECLARE usertype: UserType
-DECLARE user : User
-DECLARE age1, age2: INTEGER
-
-usertype <- NEW UserType("Jaxon", 15)
-
-user.lastName <- "Moh"
-
-OUTPUT user.lastName, user.name, user.arr1[1]
+CONSTANT PI = 3.142
+OUTPUT PI

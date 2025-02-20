@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use crate::enums::{Node, VariableType};
 use crate::executor::runtime_err;
+use crate::utils::err;
 
 const GC_COUNT: u64 = 2;
 
@@ -37,6 +38,7 @@ pub enum Scope {
 pub struct Variable {
     pub value: Box<Node>,
     pub t: VariableType,
+    pub mutable: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -109,7 +111,7 @@ impl Executor {
         runtime_err(format!("{} is not declared", identifier))
     }
 
-    pub fn declare_var(&mut self, identifier: &String, value: Box<Node>, t: &Box<VariableType>) {
+    pub fn declare_var(&mut self, identifier: &String, value: Box<Node>, t: &Box<VariableType>, mutable: bool) {
         let scope = self.scopes.last_mut().unwrap();
         match scope {
             Scope::Global(ref mut state) | Scope::Local(ref mut state) => {
@@ -119,6 +121,7 @@ impl Executor {
                         Variable {
                             value,
                             t: *t.clone(),
+                            mutable,
                         },
                     );
                 } else {
@@ -133,14 +136,23 @@ impl Executor {
             match scope {
                 Scope::Global(ref mut state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
-                        return var.value = value;
+                        if var.mutable {
+                            return var.value = value;    
+                        } else {
+                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+                        }
+                        
                     } else {
                         break;
                     }
                 }
                 Scope::Local(ref mut state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
-                        return var.value = value;
+                        if var.mutable {
+                            return var.value = value;
+                        } else {
+                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+                        }
                     }
                 }
             }
@@ -175,14 +187,22 @@ impl Executor {
             match scope {
                 Scope::Global(state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
-                        return var;
+                        if var.mutable {
+                            return var;    
+                        } else {
+                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+                        }
                     } else {
                         break;
                     }
                 }
                 Scope::Local(state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
-                        return var;
+                        if var.mutable {
+                            return var;
+                        } else {
+                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+                        }
                     }
                 }
             }
@@ -238,7 +258,7 @@ pub fn initialise_record(executor: &mut Executor, name: &String) -> Box<Node> {
         executor.enter_scope();
         for (name, prop) in props.iter() {
             if let Property::Var { value, t, .. } = prop {
-                executor.declare_var(name, value.clone(), t);
+                executor.declare_var(name, value.clone(), t, true);
             }
         }
         executor.exit_scope();
