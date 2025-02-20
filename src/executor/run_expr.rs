@@ -106,7 +106,7 @@ fn run_eq_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     let lhs = stack.pop().expect("Invalid operation");
     
     match lhs.deref() {
-        Node::Int {..} | Node::Real{..} | Node::Boolean {..} | Node::String {..} | Node::Date {..} => {},
+        Node::Int {..} | Node::Real{..} | Node::Boolean {..} | Node::String {..} | Node::Date {..} | Node::EnumVal {..} => {},
         Node::Array {..} => runtime_err(format!("Equality check between ARRAY is not a valid operation {}", crate::utils::SUPPORT_MESSAGE)),
         _ => unimplemented!(),
     }

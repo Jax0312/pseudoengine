@@ -1,5 +1,5 @@
+use crate::tokens::TToken;
 use chrono::NaiveDate;
-use crate::{tokens::TToken};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -94,6 +94,10 @@ pub enum Node {
         val: NaiveDate,
         pos: Position,
     },
+    EnumVal {
+        family: String,
+        val: String,
+    },
     Var {
         name: String,
         pos: Position,
@@ -106,6 +110,10 @@ pub enum Node {
     RefVar(*mut Box<Node>),
     Reference(Box<Node>),
     Dereference(Box<Node>),
+    Enum {
+        name: String,
+        variants: Vec<Box<Node>>,
+    },
     // Composite type 'Record'
     Record {
         name: String,
@@ -212,11 +220,12 @@ pub enum Node {
 impl Node {
     pub fn val_as_str(&self) -> String {
         match self {
-            Node::Int {val, .. } => val.to_string(),
+            Node::Int { val, .. } => val.to_string(),
             Node::String { val, .. } => val.clone(),
             Node::Boolean { val, .. } => val.to_string(),
             Node::Real { val, .. } => val.to_string(),
             Node::Date { val, .. } => val.to_string(),
+            Node::EnumVal { val, .. } => val.to_string(),
             _ => unimplemented!(),
         }
     }

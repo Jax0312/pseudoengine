@@ -35,6 +35,7 @@ pub fn var_type_of(node: &Box<Node>) -> VariableType {
         Node::Real { .. } => VariableType::Real,
         Node::String { .. } => VariableType::String,
         Node::Date { .. } => VariableType::Date,
+        Node::EnumVal { family, .. } => VariableType::Custom(family.clone()),
         _ => unimplemented!(),
     }
 }
@@ -87,6 +88,7 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             Definition::Record { name, props } => {
                 return initialise_record(executor, &name);
             },
+            Definition::Enum {..} => return Box::from(Node::Null),
             _ => runtime_err("Invalid type".to_string()),
         },
         _ => unimplemented!(),

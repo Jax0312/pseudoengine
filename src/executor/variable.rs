@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use crate::enums::{Node, VariableType};
-use crate::executor::runtime_err;
-use crate::utils::err;
+use crate::executor::{runtime_err, var_type_of};
 
 const GC_COUNT: u64 = 2;
 
@@ -74,6 +73,9 @@ pub enum Definition {
     Record {
         name: String,
         props: HashMap<String, Property>,
+    },
+    Enum {
+        name: String,
     }
 }
 
@@ -131,13 +133,19 @@ impl Executor {
         }
     }
 
+    // Assign value to variable with type checking
     pub fn set_var(&mut self, identifier: &String, value: Box<Node>) {
         for scope in self.scopes.iter_mut().rev() {
             match scope {
                 Scope::Global(ref mut state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
                         if var.mutable {
-                            return var.value = value;    
+                            if var.t == var_type_of(&value) {
+                                return var.value = value;    
+                            } else {
+                                runtime_err(format!("Cannot assign {:?} to {:?}", var_type_of(&value), var.t))    
+                            }
+                                
                         } else {
                             runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
                         }
@@ -188,7 +196,7 @@ impl Executor {
                 Scope::Global(state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
                         if var.mutable {
-                            return var;    
+                            return var;
                         } else {
                             runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
                         }

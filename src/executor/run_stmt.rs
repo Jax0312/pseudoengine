@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Node, Position, VariableType};
+use crate::enums::Node::EnumVal;
 use crate::executor::run_expr::run_expr;
 use crate::executor::run_io::{run_input, run_output};
-use crate::executor::runtime_err;
+use crate::executor::{runtime_err, var_type_of};
 use crate::executor::variable::{Definition, Executor, Property};
 
 use super::default_var;
@@ -20,6 +21,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
     match node.deref() {
         Node::Declare { t, children } => run_declare(executor, children, t),
         Node::Const { name, val, .. } => run_const(executor, name, val),
+        Node::Enum { name, variants } => run_enum(executor, name, variants),
         Node::If {
             cond,
             true_body,
@@ -162,15 +164,18 @@ fn run_composite_prop(
 }
 
 fn run_const(executor: &mut Executor, identifier: &String, val: &Box<Node>) {
-    let t = match **val {
-        Node::String { .. } => VariableType::String,
-        Node::Int { .. } => VariableType::Integer,
-        Node::Real { .. } => VariableType::Real,
-        Node::Boolean { .. } => VariableType::Boolean,
-        Node::Date { .. } => VariableType::Date,
-        _ => unreachable!()
-    };
-    executor.declare_var(identifier, val.clone(), &Box::from(t), false);
+    executor.declare_var(identifier, val.clone(), &Box::from(var_type_of(val)), false);
+}
+
+fn run_enum(executor: &mut Executor, name: &String, variants: &[Box<Node>]) {
+    
+    executor.declare_def(name, Definition::Enum {name: name.clone()});
+    
+    for variant in variants {
+        if let Node::String { val, .. } = variant.deref() {
+            executor.declare_var(val, Box::from(EnumVal { family: name.clone(), val: val.clone() }), &Box::from(VariableType::Custom(name.clone())), false);
+        }
+    }
 }
 
 fn run_declare(executor: &mut Executor, identifiers: &[String], t: &Box<VariableType>) {
@@ -207,7 +212,7 @@ fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
     let rhs = run_expr(executor, rhs);
     match lhs.deref() {
         Node::Var { name, .. } => {
-            executor.get_var_mut(name).value = rhs;
+            executor.set_var(name, rhs);
         }
         Node::ArrayVar { name, indices, .. } => {
             *run_array_access(executor, name, indices) = rhs;

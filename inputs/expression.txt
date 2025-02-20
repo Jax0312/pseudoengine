@@ -1,2 +1,10 @@
-CONSTANT PI = 3.142
-OUTPUT PI
+TYPE Weekday = (Monday, Tuesday, Wednesday)
+
+DECLARE day: STRING
+DECLARE tday: Weekday
+
+tday <- Monday
+
+IF 5 = tday THEN
+    OUTPUT "HEHE"
+ENDIF

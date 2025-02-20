@@ -33,11 +33,45 @@ pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
             if op != "=" {
                 err("Expected '='", &next_token.pos)
             }
-            todo!()
+            match expect_token(lexer, &[TToken::LParen, TToken::Caret], "'(' or '^'").t {
+                TToken::LParen => parse_enum(lexer, name),
+                TToken::Caret => {todo!()},
+                _ => unreachable!(),
+            }
         },
         _ => unreachable!()
     }
     
+}
+
+fn parse_enum(lexer: &mut Lexer, name: String) -> Box<Node> {
+    let mut expect_ident = false;
+    let mut variants = Vec::<String>::new();
+    let mut current;
+    
+    loop {
+        current = lexer.next();
+        match current.clone().unwrap() {
+            Token {t: TToken::Identifier(ident), pos: _ } => {
+                variants.push(ident);
+                expect_ident = false;
+            }
+            Token {t: TToken::Comma, pos } => {
+                if expect_ident {
+                    err("Enum value expected", &pos);
+                }
+                expect_ident = true;
+            }
+            _ => break,
+        }
+    }
+    let current = current.unwrap();
+    if expect_ident {
+        err("Enum value expected", &current.pos);
+    } else if current.t != TToken::RParen {
+        err(") expected", &current.pos);
+    }
+    Box::from(Node::Enum { name, variants: variants.into_iter().map(|variant| Box::from(Node::String { val: variant, pos: Position::invalid() })).collect() })
 }
 
 pub fn parse_constant(lexer: &mut Lexer) -> Box<Node> {
