@@ -8,7 +8,7 @@ use std::ops::Deref;
 use chrono::NaiveDate;
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
-use crate::executor::variable::{initialise_record, Executor};
+use crate::executor::variable::{get_def, initialise_record, Executor};
 use variable::{Definition};
 
 pub fn run(nodes: Vec<Box<Node>>) {
@@ -81,14 +81,15 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
                 pos: Position::invalid(),
             }
         }
-        VariableType::Custom(name) => match executor.get_def(name) {
+        VariableType::Custom(name) => match get_def(&mut executor.defs, name) {
             Definition::Class { .. } => {
                 return Box::new(Node::Object(0));
             }
             Definition::Record { name, props } => {
                 return initialise_record(executor, &name);
             },
-            Definition::Enum {..} => return Box::from(Node::Null),
+            Definition::Enum { .. } => return Box::from(Node::Null),
+            Definition::Ref { .. } => return Box::from(Node::Null),
             _ => runtime_err("Invalid type".to_string()),
         },
         _ => unimplemented!(),

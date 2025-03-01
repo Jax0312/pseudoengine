@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
-use crate::executor::variable::{Definition, Executor, Object, Property};
+use crate::executor::variable::{get_def, Definition, Executor, Object, Property};
 use crate::executor::{runtime_err, var_type_of};
 use crate::executor::builtin_func_def::*;
 
@@ -274,7 +274,7 @@ fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Nod
         _ => {}
     }
 
-    if let Definition::Function { params, children } = executor.get_def(name) {
+    if let Definition::Function { params, children } = get_def(&mut executor.defs, name) {
         return run_fn_call_inner(executor, call_params, &params, &children, true);
     }
     runtime_err("Invalid function call".to_string())
@@ -343,7 +343,7 @@ fn run_fn_call_inner(
 
 fn run_create_obj(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     if let Node::FunctionCall { params, name } = node.deref() {
-        if let Definition::Class { props, .. } = executor.get_def(name) {
+        if let Definition::Class { props, .. } = get_def(&mut executor.defs, name) {
             if let Some(Property::Procedure {
                 private,
                 params: fn_params,

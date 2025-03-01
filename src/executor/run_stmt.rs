@@ -6,7 +6,7 @@ use crate::enums::Node::EnumVal;
 use crate::executor::run_expr::run_expr;
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::{runtime_err, var_type_of};
-use crate::executor::variable::{Definition, Executor, Property};
+use crate::executor::variable::{declare_def, Definition, Executor, Property};
 
 use super::default_var;
 use super::run_expr::get_array_index;
@@ -21,6 +21,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
     match node.deref() {
         Node::Declare { t, children } => run_declare(executor, children, t),
         Node::Const { name, val, .. } => run_const(executor, name, val),
+        Node::RefType { name, ref_to } => run_ref_type(executor, name, ref_to),
         Node::Enum { name, variants } => run_enum(executor, name, variants),
         Node::If {
             cond,
@@ -64,7 +65,8 @@ fn run_function(
     children: &Vec<Box<Node>>,
 ) {
     if let Node::String { val, .. } = identifier.deref() {
-        return executor.declare_def(
+        return declare_def(
+            &mut executor.defs,
             val,
             Definition::Function {
                 params: params.clone(),
@@ -73,6 +75,10 @@ fn run_function(
         );
     }
     runtime_err("Invalid function declaration".to_string())
+}
+
+fn run_ref_type(executor: &mut Executor, name: &String, ref_type: &Box<VariableType>) {
+    declare_def(&mut executor.defs, name, Definition::Ref {name: name.clone(), ref_to: ref_type.clone()});
 }
 
 fn run_record(executor: &mut Executor, name: &String, children: &Vec<Box<Node>>) {
@@ -87,7 +93,8 @@ fn run_record(executor: &mut Executor, name: &String, children: &Vec<Box<Node>>)
             }
         }
     }
-    executor.declare_def(
+    declare_def(
+        &mut executor.defs,
         name,
         Definition::Record {
             name: name.clone(),
@@ -114,7 +121,8 @@ fn run_class(
         }
     }
     if let Node::String { val, .. } = name.deref() {
-        return executor.declare_def(
+        return declare_def(
+            &mut executor.defs,
             val,
             Definition::Class {
                 name: val.clone(),
@@ -169,7 +177,7 @@ fn run_const(executor: &mut Executor, identifier: &String, val: &Box<Node>) {
 
 fn run_enum(executor: &mut Executor, name: &String, variants: &[Box<Node>]) {
     
-    executor.declare_def(name, Definition::Enum {name: name.clone()});
+    declare_def(&mut executor.defs, name, Definition::Enum {name: name.clone()});
     
     for variant in variants {
         if let Node::String { val, .. } = variant.deref() {

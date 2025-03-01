@@ -35,13 +35,25 @@ pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
             }
             match expect_token(lexer, &[TToken::LParen, TToken::Caret], "'(' or '^'").t {
                 TToken::LParen => parse_enum(lexer, name),
-                TToken::Caret => {todo!()},
+                TToken::Caret => parse_pointer(lexer, &name),
                 _ => unreachable!(),
             }
         },
         _ => unreachable!()
     }
     
+}
+
+fn parse_pointer(lexer: &mut Lexer, name: &String) -> Box<Node> {
+    let ref_to = Box::from(match expect_token(lexer, &[TToken::Identifier("".to_string()), TToken::VarType(VariableType::String)], "Data type").t {
+        TToken::Identifier(name) => VariableType::Custom(name),
+        TToken::VarType(vt) => vt,
+        _ => unreachable!()
+    });
+    Box::from(Node::RefType {
+        name: name.clone(),
+        ref_to,
+    })
 }
 
 fn parse_enum(lexer: &mut Lexer, name: String) -> Box<Node> {

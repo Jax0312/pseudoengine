@@ -1,10 +1,7 @@
-TYPE Weekday = (Monday, Tuesday, Wednesday)
+TYPE PInteger = ^INTEGER
 
-DECLARE day: STRING
-DECLARE tday: Weekday
+DECLARE pNum: PInteger
+DECLARE num: INTEGER
 
-tday <- Monday
-
-IF Monday = tday THEN
-    OUTPUT tday
-ENDIF
+num <- 5
+pNum <- ^num

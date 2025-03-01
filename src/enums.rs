@@ -11,8 +11,8 @@ pub enum VariableType {
     String,
     Date,
     Array(Box<Array>),
+    Pointer(Box<VariableType>),
     Custom(String),
-    // Pointers
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -106,6 +106,10 @@ pub enum Node {
         name: String,
         val: Box<Node>,
         pos: Position,
+    },
+    RefType {
+        name: String,
+        ref_to: Box<VariableType>,
     },
     RefVar(*mut Box<Node>),
     Reference(Box<Node>),

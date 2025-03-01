@@ -76,6 +76,10 @@ pub enum Definition {
     },
     Enum {
         name: String,
+    },
+    Ref {
+        name: String,
+        ref_to: Box<VariableType>,
     }
 }
 
@@ -97,22 +101,7 @@ impl Executor {
     pub fn exit_scope(&mut self) -> Scope {
         self.scopes.pop().unwrap()
     }
-
-    pub fn declare_def(&mut self, identifier: &String, def: Definition) {
-        if !self.defs.contains_key(identifier) {
-            self.defs.insert(identifier.clone(), def);
-            return;
-        }
-        runtime_err(format!("{} is already declared", identifier))
-    }
-
-    pub fn get_def(&mut self, identifier: &String) -> Definition {
-        if self.defs.contains_key(identifier) {
-            return self.defs.get(identifier).unwrap().clone();
-        }
-        runtime_err(format!("{} is not declared", identifier))
-    }
-
+    
     pub fn declare_var(&mut self, identifier: &String, value: Box<Node>, t: &Box<VariableType>, mutable: bool) {
         let scope = self.scopes.last_mut().unwrap();
         match scope {
@@ -133,43 +122,69 @@ impl Executor {
         }
     }
 
+    
     // Assign value to variable with type checking
     pub fn set_var(&mut self, identifier: &String, value: Box<Node>) {
+
+        let rhs_type = match value.deref() {
+            Node::Reference(val) => {
+                if let Node::Var {name, pos} = val.deref() {
+                    VariableType::Pointer(Box::from(self.get_var(&name).t.clone()))
+                } else {
+                    unreachable!()
+                }
+
+            },
+            _ => var_type_of(&value),
+        };
+        
+        
+        let mut var = None;
         for scope in self.scopes.iter_mut().rev() {
             match scope {
                 Scope::Global(ref mut state) => {
-                    if let Some(var) = state.variables.get_mut(identifier) {
-                        if var.mutable {
-                            if var.t == var_type_of(&value) {
-                                return var.value = value;    
-                            } else {
-                                runtime_err(format!("Cannot assign {:?} to {:?}", var_type_of(&value), var.t))    
-                            }
-                                
-                        } else {
-                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
-                        }
-                        
+                    if let Some(_var) = state.variables.get_mut(identifier) {
+                        var = Some(_var);
                     } else {
                         break;
                     }
-                }
+                },
                 Scope::Local(ref mut state) => {
-                    if let Some(var) = state.variables.get_mut(identifier) {
-                        if var.mutable {
-                            return var.value = value;
-                        } else {
-                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
-                        }
+                    if let Some(_var) = state.variables.get_mut(identifier) {
+                        var = Some(_var);
                     }
                 }
             }
         }
+        
+        let var = match var {
+            Some(var) => var,
+            None => runtime_err(format!("{} is not declared", identifier))
+        };
+        
+        // assigning logic
+        if var.mutable {
+            println!("{:?}", value);
+            let lhs_type = match &var.t {
+                VariableType::Custom(udt) => match get_def(&mut self.defs, udt) {
+                    Definition::Ref {name, ref_to} => {Some(VariableType::Pointer(ref_to))}
+                    _ => None,
+                }
+                _ => None
+            };
+            if lhs_type.unwrap_or(var.t.clone()) == rhs_type {
+                var.value = value;
+            } else {
+                runtime_err(format!("Cannot assign {:?} to {:?}", rhs_type, var.t))
+            }
 
-        runtime_err(format!("{} is not declared", identifier))
+        } else {
+            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+        }
+        
     }
 
-    pub fn get_var<'a>(&'a mut self, identifier: &String) -> &'a Variable {
+    pub fn get_var(&self, identifier: &String) -> &Variable {
         for scope in self.scopes.iter().rev() {
             match scope {
                 Scope::Global(state) => {
@@ -261,8 +276,23 @@ fn gc_mark(heap: &mut HashMap<u64, Object>, obj_id: u64) {
         }
     }
 }
+
+pub fn declare_def(defs: &mut HashMap<String, Definition>, identifier: &String, def: Definition) {
+    if !defs.contains_key(identifier) {
+        defs.insert(identifier.clone(), def);
+        return;
+    }
+    runtime_err(format!("{} is already declared", identifier))
+}
+
+pub fn get_def(defs: &mut HashMap<String, Definition>, identifier: &String) -> Definition {
+    if defs.contains_key(identifier) {
+        return defs.get(identifier).unwrap().clone();
+    }
+    runtime_err(format!("{} is not declared", identifier))
+}
 pub fn initialise_record(executor: &mut Executor, name: &String) -> Box<Node> {
-    if let Definition::Record { props, .. } = executor.get_def(name) {
+    if let Definition::Record { props, .. } = get_def(&mut executor.defs, name) {
         executor.enter_scope();
         for (name, prop) in props.iter() {
             if let Property::Var { value, t, .. } = prop {
