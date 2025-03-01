@@ -1,7 +1,2 @@
-DECLARE num : STRING
-num <- "EHY"
-
-CASE OF num
-    "Hey": OUTPUT "World"
-    OTHERWISE: OUTPUT "HAHA"
-ENDCASE
+DECLARE num : REAL
+INPUT num
