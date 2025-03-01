@@ -1,10 +1,37 @@
-DECLARE X: INTEGER
+TYPE A
+    DECLARE Y: INTEGER
+ENDTYPE
 
-FUNCTION set_by_ref(BYREF Y : INTEGER) RETURNS INTEGER
-    Y <- 5
+DECLARE X: A
+DECLARE Z: ARRAY[1:2] OF INTEGER
+
+FUNCTION set_by_val(BYVAL K : INTEGER) RETURNS INTEGER
+    K <- 3
     RETURN 0
 ENDFUNCTION
 
-X <- 4
-set_by_ref(X)
-OUTPUT X
+FUNCTION set_by_ref(BYREF K : INTEGER) RETURNS INTEGER
+    K <- 3
+    RETURN 0
+ENDFUNCTION
+
+FUNCTION set_obj_by_ref(BYREF K : A) RETURNS INTEGER
+    K.Y <- 4
+    RETURN 0
+ENDFUNCTION
+
+X.Y <- 1
+Z[1] <- 2
+
+set_by_val(X.Y)
+set_by_val(Z[1])
+OUTPUT "Set X.Y by val: ", X.Y
+OUTPUT "Set Z[1] by val: ", Z[1]
+
+set_by_ref(X.Y)
+set_by_ref(Z[1])
+OUTPUT "Set X.Y by ref: ", X.Y
+OUTPUT "Set Z[1] by ref: ", Z[1]
+
+set_obj_by_ref(X)
+OUTPUT "Set X by ref: ", X.Y

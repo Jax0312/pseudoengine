@@ -3,8 +3,15 @@ CLASS Pet INHERITS Snake
     PUBLIC PROCEDURE NEW(GivenName : STRING)
         Name <- GivenName
     ENDPROCEDURE
+
+    PUBLIC PROCEDURE Rename(GivenName : STRING)
+        OUTPUT Name
+        Name <- GivenName
+    ENDPROCEDURE
 ENDCLASS
 
 DECLARE pet: Pet
 pet <- NEW Pet("Samuel")
+pet.Rename("Simon")
+OUTPUT pet.Name
 

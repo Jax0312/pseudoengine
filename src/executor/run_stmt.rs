@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
-use crate::enums::{Node, Position, VariableType};
 use crate::enums::Node::EnumVal;
+use crate::enums::{Node, Position, VariableType};
 use crate::executor::run_expr::run_expr;
 use crate::executor::run_io::{run_input, run_output};
-use crate::executor::{runtime_err, var_type_of};
 use crate::executor::variable::{declare_def, Definition, Executor, Property};
+use crate::executor::{runtime_err, var_type_of};
 
 use super::default_var;
 use super::run_expr::get_array_index;
@@ -78,7 +78,14 @@ fn run_function(
 }
 
 fn run_ref_type(executor: &mut Executor, name: &String, ref_type: &Box<VariableType>) {
-    declare_def(&mut executor.defs, name, Definition::Ref {name: name.clone(), ref_to: ref_type.clone()});
+    declare_def(
+        &mut executor.defs,
+        name,
+        Definition::Ref {
+            name: name.clone(),
+            ref_to: ref_type.clone(),
+        },
+    );
 }
 
 fn run_record(executor: &mut Executor, name: &String, children: &Vec<Box<Node>>) {
@@ -156,16 +163,19 @@ fn run_composite_prop(
             }
             unreachable!()
         }
-        Node::Declare { children, t } => children.iter().map(|var_name| {
-            (
-                var_name.clone(),
-                Property::Var {
-                    private,
-                    value: default_var(executor, t),
-                    t: t.clone(),
-                },
-            )
-        }).collect(),
+        Node::Declare { children, t } => children
+            .iter()
+            .map(|var_name| {
+                (
+                    var_name.clone(),
+                    Property::Var {
+                        private,
+                        value: default_var(executor, t),
+                        t: t.clone(),
+                    },
+                )
+            })
+            .collect(),
         Node::Private(node) => return run_composite_prop(executor, node, true),
         _ => runtime_err("Invalid class declaration".to_string()),
     }
@@ -176,12 +186,23 @@ fn run_const(executor: &mut Executor, identifier: &String, val: &Box<Node>) {
 }
 
 fn run_enum(executor: &mut Executor, name: &String, variants: &[Box<Node>]) {
-    
-    declare_def(&mut executor.defs, name, Definition::Enum {name: name.clone()});
-    
+    declare_def(
+        &mut executor.defs,
+        name,
+        Definition::Enum { name: name.clone() },
+    );
+
     for variant in variants {
         if let Node::String { val, .. } = variant.deref() {
-            executor.declare_var(val, Box::from(EnumVal { family: name.clone(), val: val.clone() }), &Box::from(VariableType::Custom(name.clone())), false);
+            executor.declare_var(
+                val,
+                Box::from(EnumVal {
+                    family: name.clone(),
+                    val: val.clone(),
+                }),
+                &Box::from(VariableType::Custom(name.clone())),
+                false,
+            );
         }
     }
 }
@@ -217,43 +238,41 @@ fn run_while(executor: &mut Executor, cond: &Box<Node>, body: &Vec<Box<Node>>) {
 }
 
 fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
-    let rhs = run_expr(executor, rhs);
+    *run_assign_inner(executor, lhs) = run_expr(executor, rhs);
+}
+
+pub fn run_assign_inner<'a>(executor: &'a mut Executor, lhs: &Box<Node>) -> &'a mut Box<Node> {
     match lhs.deref() {
         Node::Var { name, .. } => {
             let variable = &mut executor.get_var_mut(name).value;
-            if let Node::RefVar(var) = variable.deref_mut() {
-                return unsafe { **var = rhs }
-            }
-            executor.set_var(name, rhs);
+            eval_ref(variable)
         }
         Node::ArrayVar { name, indices, .. } => {
-            *run_array_access(executor, name, indices) = rhs;
+            run_array_access(executor, name, indices)
         }
         Node::Composite { children } => {
             let mut children = children.clone();
-            run_indices(executor, &mut children);
+            eval_indices(executor, &mut children);
             let mut base = match children[0].deref() {
-                Node::Var { name, .. } => &mut executor.get_var_mut(name).value,
+                Node::Var { name, .. } => eval_ref(&mut executor.get_var_mut(name).value),
                 Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
                 _ => runtime_err("Invalid assign statement".to_string()),
             };
             for child in children.iter().skip(1) {
                 base = match child.deref() {
                     Node::Var { name, .. } => run_prop_access(base, name),
-                    Node::ArrayVar { name, indices, .. } => {
-                        run_array_prop_access(base, name, indices)
-                    }
+                    Node::ArrayVar { name, indices, .. } => run_array_prop_access(base, name, indices),
                     _ => runtime_err("Invalid property access".to_string()),
                 };
             }
-            *base = rhs;
+            base
         }
         _ => runtime_err("Invalid assign statement".to_string()),
-    };
+    }
 }
 
 // Precalculate indices to placate borrow checker
-fn run_indices(executor: &mut Executor, children: &mut Vec<Box<Node>>) {
+fn eval_indices(executor: &mut Executor, children: &mut Vec<Box<Node>>) {
     for child in children.iter_mut() {
         if let Node::ArrayVar { name, indices, .. } = child.deref_mut() {
             for index in indices {
@@ -264,6 +283,13 @@ fn run_indices(executor: &mut Executor, children: &mut Vec<Box<Node>>) {
             }
         }
     }
+}
+
+fn eval_ref(mut value: &mut Box<Node>) -> &mut Box<Node> {
+    while let Node::RefVar(reference) = *value.deref_mut() {
+        value = unsafe { &mut *reference };
+    }
+    value
 }
 
 fn run_array_access<'a>(
@@ -280,7 +306,7 @@ fn run_array_access<'a>(
         .collect::<Vec<i64>>();
     let node = &mut executor.get_var_mut(name).value;
     if let Node::Array { values, shape, .. } = node.deref_mut() {
-        return &mut values[get_array_index(indices, shape)];
+        return eval_ref(&mut values[get_array_index(indices, shape)]);
     };
     runtime_err("Invalid array access".to_string());
 }
@@ -290,30 +316,27 @@ fn run_array_prop_access<'a>(
     name: &String,
     indices: &Vec<Box<Node>>,
 ) -> &'a mut Box<Node> {
-    let indices = indices
-        .iter()
-        .map(|index| match index.deref() {
-            Node::Int { val, .. } => val.clone(),
-            _ => unreachable!(),
-        })
-        .collect::<Vec<i64>>();
-    if let Node::Object{ props, .. } = base.deref_mut() {
+    if let Node::Object { props, .. } = base.deref_mut() {
         if let Some(Property::Var { value, .. }) = props.get_mut(name) {
             if let Node::Array { values, shape, .. } = value.deref_mut() {
-                return &mut values[get_array_index(indices, shape)];
+                let indices = indices
+                    .iter()
+                    .map(|index| match index.deref() {
+                        Node::Int { val, .. } => val.clone(),
+                        _ => unreachable!(),
+                    })
+                    .collect::<Vec<i64>>();
+                return eval_ref(&mut values[get_array_index(indices, shape)]);
             };
         }
     }
     runtime_err("Invalid array property access".to_string());
 }
 
-fn run_prop_access<'a>(
-    base: &'a mut Box<Node>,
-    name: &String,
-) -> &'a mut Box<Node> {
-    if let Node::Object{ props, .. } = base.deref_mut() {
+fn run_prop_access<'a>(base: &'a mut Box<Node>, name: &String) -> &'a mut Box<Node> {
+    if let Node::Object { props, .. } = base.deref_mut() {
         if let Some(Property::Var { value, .. }) = props.get_mut(name) {
-            return value
+            return eval_ref(value);
         }
     }
     runtime_err("Invalid property access".to_string());
@@ -342,7 +365,7 @@ fn run_for(
                     pos: Position::invalid(),
                 }),
                 &Box::new(VariableType::Integer),
-                true
+                true,
             );
             while start <= end {
                 executor.set_var(
