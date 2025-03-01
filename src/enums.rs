@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use crate::executor::{self, Property};
 use crate::tokens::TToken;
 use chrono::NaiveDate;
 
@@ -60,7 +63,10 @@ pub enum Node {
         base: Box<Node>,
         children: Vec<Box<Node>>,
     },
-    Object(u64),
+    Object {
+        name: String,
+        props: HashMap<String, Property>,
+    },
     Function {
         name: Box<Node>,
         params: Vec<Box<Node>>,

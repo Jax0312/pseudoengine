@@ -8,8 +8,8 @@ use std::ops::Deref;
 use chrono::NaiveDate;
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
-use crate::executor::variable::{get_def, initialise_record, Executor};
-use variable::{Definition};
+use crate::executor::variable::{Executor, Definition};
+
 
 pub fn run(nodes: Vec<Box<Node>>) {
     let mut executor = Executor::new();
@@ -36,6 +36,7 @@ pub fn var_type_of(node: &Box<Node>) -> VariableType {
         Node::String { .. } => VariableType::String,
         Node::Date { .. } => VariableType::Date,
         Node::EnumVal { family, .. } => VariableType::Custom(family.clone()),
+        Node::Object { name, .. } => VariableType::Custom(name.clone()),
         _ => unimplemented!(),
     }
 }
@@ -81,14 +82,10 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
                 pos: Position::invalid(),
             }
         }
-        VariableType::Custom(name) => match get_def(&mut executor.defs, name) {
-            Definition::Class { .. } => {
-                return Box::new(Node::Object(0));
-            }
-            Definition::Record { name, props } => {
-                return initialise_record(executor, &name);
-            },
-            Definition::Enum { .. } => return Box::from(Node::Null),
+        VariableType::Custom(name) => match executor.get_def(name) {
+            Definition::Class { props, name } => return Box::new(Node::Object{ props, name }),
+            Definition::Record { props, name } => return Box::new(Node::Object{ props, name }),
+            Definition::Enum {..} => return Box::from(Node::Null),
             Definition::Ref { .. } => return Box::from(Node::Null),
             _ => runtime_err("Invalid type".to_string()),
         },

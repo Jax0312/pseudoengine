@@ -227,31 +227,41 @@ fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
         }
         Node::RefVar(var) => unsafe { **var = rhs },
         Node::Composite { children } => {
-            let mut index = 0;
-            let mut base = match children[index].deref() {
+            let mut children = children.clone();
+            run_indices(executor, &mut children);
+            let mut base = match children[0].deref() {
                 Node::Var { name, .. } => &mut executor.get_var_mut(name).value,
                 Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
                 Node::RefVar(var) => unsafe { &mut *var.clone() as &mut Box<Node> },
                 _ => runtime_err("Invalid assign statement".to_string()),
             };
-            if let Node::Object(mut obj_id) = base.deref_mut() {
-                for child in children.iter().skip(1) {
-                    base = match child.deref() {
-                        Node::Var { name, .. } => run_prop_access(executor, obj_id, name),
-                        Node::ArrayVar { name, indices, .. } => {
-                            run_array_prop_access(executor, obj_id, name, indices)
-                        }
-                        _ => runtime_err("Invalid property access".to_string()),
-                    };
-                    if let Node::Object(id) = base.deref_mut() {
-                        obj_id = id.clone();
+            for child in children.iter().skip(1) {
+                base = match child.deref() {
+                    Node::Var { name, .. } => run_prop_access(base, name),
+                    Node::ArrayVar { name, indices, .. } => {
+                        run_array_prop_access(base, name, indices)
                     }
-                }
+                    _ => runtime_err("Invalid property access".to_string()),
+                };
             }
             *base = rhs;
         }
         _ => runtime_err("Invalid assign statement".to_string()),
     };
+}
+
+// Precalculate indices to placate borrow checker
+fn run_indices(executor: &mut Executor, children: &mut Vec<Box<Node>>) {
+    for child in children.iter_mut() {
+        if let Node::ArrayVar { name, indices, .. } = child.deref_mut() {
+            for index in indices {
+                *index = Box::new(Node::Int {
+                    val: as_number_expr(executor, index),
+                    pos: Position::invalid(),
+                });
+            }
+        }
+    }
 }
 
 fn run_array_access<'a>(
@@ -274,35 +284,35 @@ fn run_array_access<'a>(
 }
 
 fn run_array_prop_access<'a>(
-    executor: &'a mut Executor,
-    obj_id: u64,
+    base: &'a mut Box<Node>,
     name: &String,
     indices: &Vec<Box<Node>>,
 ) -> &'a mut Box<Node> {
     let indices = indices
         .iter()
-        .map(|index| match run_expr(executor, index).deref() {
+        .map(|index| match index.deref() {
             Node::Int { val, .. } => val.clone(),
             _ => unreachable!(),
         })
         .collect::<Vec<i64>>();
-    let object = executor.heap.get_mut(&obj_id).unwrap();
-    if let Some(Property::Var { value, .. }) = object.props.get_mut(name) {
-        if let Node::Array { values, shape, .. } = value.deref_mut() {
-            return &mut values[get_array_index(indices, shape)];
-        };
+    if let Node::Object{ props, .. } = base.deref_mut() {
+        if let Some(Property::Var { value, .. }) = props.get_mut(name) {
+            if let Node::Array { values, shape, .. } = value.deref_mut() {
+                return &mut values[get_array_index(indices, shape)];
+            };
+        }
     }
     runtime_err("Invalid array property access".to_string());
 }
 
 fn run_prop_access<'a>(
-    executor: &'a mut Executor,
-    obj_id: u64,
+    base: &'a mut Box<Node>,
     name: &String,
 ) -> &'a mut Box<Node> {
-    let object = executor.heap.get_mut(&obj_id).unwrap();
-    if let Some(Property::Var { value, .. }) = object.props.get_mut(name) {
-        return value;
+    if let Node::Object{ props, .. } = base.deref_mut() {
+        if let Some(Property::Var { value, .. }) = props.get_mut(name) {
+            return value;
+        }
     }
     runtime_err("Invalid property access".to_string());
 }

@@ -1,16 +1,12 @@
 CLASS Pet INHERITS Snake
     PUBLIC Name : STRING
+    PUBLIC Species: ARRAY[1:3] OF STRING
     PUBLIC PROCEDURE NEW(GivenName : STRING)
         Name <- GivenName
     ENDPROCEDURE
 ENDCLASS
 
 DECLARE pet: Pet
-pet <- NEW Pet("Hello World!")
-OUTPUT pet.Name
-pet.Name <- "From Snake"
-OUTPUT pet.Name, " No.", 0 + 1
-
-DECLARE x : INTEGER
-x <- x + 5
-OUTPUT "X is ", x
+pet <- NEW Pet("Samuel")
+pet.Species[5 - 4] <- "cobra"
+OUTPUT pet.Name, " is a ", pet.Species[4 - 3]

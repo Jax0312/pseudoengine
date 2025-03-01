@@ -4,13 +4,8 @@ use std::ops::Deref;
 use crate::enums::{Node, VariableType};
 use crate::executor::{runtime_err, var_type_of};
 
-const GC_COUNT: u64 = 2;
-
 pub struct Executor {
     pub scopes: Vec<Scope>,
-    pub heap: HashMap<u64, Object>,
-    pub obj_id: u64,
-    pub alloc_count: u64,
     pub defs: HashMap<String, Definition>,
 }
 
@@ -38,12 +33,6 @@ pub struct Variable {
     pub value: Box<Node>,
     pub t: VariableType,
     pub mutable: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Object {
-    pub props: HashMap<String, Property>,
-    pub marked: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -87,9 +76,6 @@ impl Executor {
     pub fn new() -> Executor {
         Executor {
             scopes: vec![Scope::Global(State::new())],
-            heap: HashMap::new(),
-            obj_id: 0,
-            alloc_count: 0,
             defs: HashMap::new(),
         }
     }
@@ -101,7 +87,7 @@ impl Executor {
     pub fn exit_scope(&mut self) -> Scope {
         self.scopes.pop().unwrap()
     }
-    
+
     pub fn declare_var(&mut self, identifier: &String, value: Box<Node>, t: &Box<VariableType>, mutable: bool) {
         let scope = self.scopes.last_mut().unwrap();
         match scope {
@@ -122,7 +108,7 @@ impl Executor {
         }
     }
 
-    
+
     // Assign value to variable with type checking
     pub fn set_var(&mut self, identifier: &String, value: Box<Node>) {
 
@@ -137,8 +123,8 @@ impl Executor {
             },
             _ => var_type_of(&value),
         };
-        
-        
+
+
         let mut var = None;
         for scope in self.scopes.iter_mut().rev() {
             match scope {
@@ -156,12 +142,12 @@ impl Executor {
                 }
             }
         }
-        
+
         let var = match var {
             Some(var) => var,
             None => runtime_err(format!("{} is not declared", identifier))
         };
-        
+
         // assigning logic
         if var.mutable {
             println!("{:?}", value);
@@ -181,7 +167,7 @@ impl Executor {
         } else {
             runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
         }
-        
+
     }
 
     pub fn get_var(&self, identifier: &String) -> &Variable {
@@ -233,48 +219,6 @@ impl Executor {
 
         runtime_err(format!("{} is not declared", identifier))
     }
-
-    pub fn trigger_gc(&mut self) {
-        if self.alloc_count >= GC_COUNT {
-            println!("INFO: GC triggerd");
-            println!("INFO: Heap size before {}", self.heap.len());
-            for scope in self.scopes.iter() {
-                match scope {
-                    Scope::Global(state) | Scope::Local(state) => {
-                        for (_, variable) in &state.variables {
-                            if let Node::Object(obj_id) = *variable.value {
-                                gc_mark(&mut self.heap, obj_id);
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (obj_id, object) in self.heap.clone() {
-                if !object.marked {
-                    self.heap.remove(&obj_id);
-                }
-            }
-            for (_, object) in &mut self.heap {
-                object.marked = false
-            }
-            println!("INFO: Heap size after {}", self.heap.len());
-
-            self.alloc_count = 0
-        }
-    }
-}
-
-fn gc_mark(heap: &mut HashMap<u64, Object>, obj_id: u64) {
-    let object = heap.get_mut(&obj_id).unwrap();
-    object.marked = true;
-    for (_, property) in object.props.clone() {
-        if let Property::Var { value, .. } = property {
-            if let Node::Object(obj_id) = *value.deref() {
-                gc_mark(heap, obj_id);
-            }
-        }
-    }
 }
 
 pub fn declare_def(defs: &mut HashMap<String, Definition>, identifier: &String, def: Definition) {
@@ -291,29 +235,4 @@ pub fn get_def(defs: &mut HashMap<String, Definition>, identifier: &String) -> D
     }
     runtime_err(format!("{} is not declared", identifier))
 }
-pub fn initialise_record(executor: &mut Executor, name: &String) -> Box<Node> {
-    if let Definition::Record { props, .. } = get_def(&mut executor.defs, name) {
-        executor.enter_scope();
-        for (name, prop) in props.iter() {
-            if let Property::Var { value, t, .. } = prop {
-                executor.declare_var(name, value.clone(), t, true);
-            }
-        }
-        executor.exit_scope();
-        executor.obj_id += 1;
-        executor.trigger_gc();
-        executor.heap.insert(executor.obj_id, Object::new(props));
-        executor.alloc_count += 1;
-        return Box::new(Node::Object(executor.obj_id));
-    }
-    unreachable!()
-}
 
-impl Object {
-    pub fn new(props: HashMap<String, Property>) -> Object {
-        Object {
-            props,
-            marked: false,
-        }
-    }
-}
