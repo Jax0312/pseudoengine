@@ -438,7 +438,7 @@ fn run_method_call(
         for (name, prop) in &mut props.iter_mut() {
             if let Property::Var { value, t, .. } = prop {
                 let value = Box::new(Node::RefVar(value as *mut Box<Node>));
-                executor.declare_var(name, value, t, true);
+                executor.declare_var(name, value, &t, true);
             }
         }
         if let Some(Property::Procedure {

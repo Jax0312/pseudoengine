@@ -111,15 +111,13 @@ impl Executor {
 
     // Assign value to variable with type checking
     pub fn set_var(&mut self, identifier: &String, value: Box<Node>) {
-
         let rhs_type = match value.deref() {
             Node::Reference(val) => {
-                if let Node::Var {name, pos} = val.deref() {
+                if let Node::Var { name, pos } = val.deref() {
                     VariableType::Pointer(Box::from(self.get_var(&name).t.clone()))
                 } else {
                     unreachable!()
                 }
-
             },
             _ => var_type_of(&value),
         };
@@ -153,7 +151,7 @@ impl Executor {
             println!("{:?}", value);
             let lhs_type = match &var.t {
                 VariableType::Custom(udt) => match get_def(&mut self.defs, udt) {
-                    Definition::Ref {name, ref_to} => {Some(VariableType::Pointer(ref_to))}
+                    Definition::Ref { name, ref_to } => { Some(VariableType::Pointer(ref_to)) }
                     _ => None,
                 }
                 _ => None
@@ -163,11 +161,9 @@ impl Executor {
             } else {
                 runtime_err(format!("Cannot assign {:?} to {:?}", rhs_type, var.t))
             }
-
         } else {
             runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
         }
-
     }
 
     pub fn get_var(&self, identifier: &String) -> &Variable {

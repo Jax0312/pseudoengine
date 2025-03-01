@@ -311,7 +311,9 @@ fn run_prop_access<'a>(
 ) -> &'a mut Box<Node> {
     if let Node::Object{ props, .. } = base.deref_mut() {
         if let Some(Property::Var { value, .. }) = props.get_mut(name) {
-            return value;
+            return value
+        } else {
+            unreachable!();
         }
     }
     runtime_err("Invalid property access".to_string());
