@@ -1,7 +1,2 @@
-TYPE PInteger = ^INTEGER
-
-DECLARE pNum: PInteger
-DECLARE num: INTEGER
-
-num <- 5
-pNum <- ^num
+DECLARE num : REAL
+INPUT num

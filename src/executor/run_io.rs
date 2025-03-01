@@ -14,9 +14,9 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
             Node::Real { val, .. } => print!("{}", val.to_string()),
             Node::String { val, .. } => print!("{}", val),
             Node::Boolean { val, .. } => print!("{}", val.to_string().to_uppercase()),
-            Node::Date {val, ..} => print!("{}", val.format("%d-%m-%Y").to_string()),
+            Node::Date { val, .. } => print!("{}", val.format("%d-%m-%Y").to_string()),
             Node::Null => print!("null"),
-            Node::EnumVal {val, ..} => print!("{}", val),
+            Node::EnumVal { val, .. } => print!("{}", val),
             _ => unimplemented!(),
         }
     }
@@ -39,7 +39,7 @@ pub fn run_input(executor: &mut Executor, child: &Box<Node>) {
             VariableType::Integer => executor.set_var(
                 name,
                 Box::new(Node::Int {
-                    val: temp.parse::<i64>().unwrap_or(0),
+                    val: temp.parse::<i64>().expect("Invalid INTEGER value input"),
                     pos: Position::invalid(),
                 }),
             ),
@@ -50,8 +50,23 @@ pub fn run_input(executor: &mut Executor, child: &Box<Node>) {
                     pos: Position::invalid(),
                 }),
             ),
+            VariableType::Real => executor.set_var(
+                name,
+                Box::new(Node::Real {
+                    val: temp.parse::<f64>().expect("Invalid REAL value input"),
+                    pos: Position::invalid(),
+                }),
+            ),
+            VariableType::Boolean => executor.set_var(
+                name,
+                Box::new(Node::Boolean {
+                    val: temp.to_lowercase() == "TRUE",
+                    pos: Position::invalid(),
+                }),
+            ),
             _ => runtime_err("Invalid type".to_string()),
         };
+    } else {
+        runtime_err("Invalid input statement".to_string());
     }
-    runtime_err("Invalid input statement".to_string());
 }
