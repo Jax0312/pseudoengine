@@ -321,6 +321,22 @@ fn run_fn_call_inner(
             } else {
                 runtime_err("Parameter type mismatch".to_string())
             }
+        } else if let Node::Reference(reference) = fn_param.deref() {
+            if let Node::Declare { t, children } = reference.deref() {
+                if let Node::Expression(call_param) = call_param.deref() {
+                    if let Node::Var { name, .. } = call_param[0].deref() {
+                        let variable = executor.get_var_mut(name);
+                        if variable.t == *t.deref() {
+                            let value = Box::new(Node::RefVar(&mut variable.value as *mut Box<Node>));
+                            executor.declare_var(&children[0], value, t, true);
+                        } else {
+                            runtime_err("Parameter type mismatch".to_string())
+                        }
+                    } else {
+                        runtime_err("Reference parameter must be a variable".to_string())
+                    }
+                }
+            }
         }
     }
     for child in children {
@@ -417,7 +433,6 @@ fn run_prop_arr_access(
     base: &Box<Node>,
     name: &String,
     indices: &Vec<Box<Node>>,
-    obj_id: u64,
 ) -> Box<Node> {
     if let Node::Object{ props, .. } = base.deref() {
         if let Some(Property::Var { value, .. }) = props.get(name) {

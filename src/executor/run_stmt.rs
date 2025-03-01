@@ -220,19 +220,21 @@ fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
     let rhs = run_expr(executor, rhs);
     match lhs.deref() {
         Node::Var { name, .. } => {
+            let variable = &mut executor.get_var_mut(name).value;
+            if let Node::RefVar(var) = variable.deref_mut() {
+                return unsafe { **var = rhs }
+            }
             executor.set_var(name, rhs);
         }
         Node::ArrayVar { name, indices, .. } => {
             *run_array_access(executor, name, indices) = rhs;
         }
-        Node::RefVar(var) => unsafe { **var = rhs },
         Node::Composite { children } => {
             let mut children = children.clone();
             run_indices(executor, &mut children);
             let mut base = match children[0].deref() {
                 Node::Var { name, .. } => &mut executor.get_var_mut(name).value,
                 Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-                Node::RefVar(var) => unsafe { &mut *var.clone() as &mut Box<Node> },
                 _ => runtime_err("Invalid assign statement".to_string()),
             };
             for child in children.iter().skip(1) {
@@ -312,8 +314,6 @@ fn run_prop_access<'a>(
     if let Node::Object{ props, .. } = base.deref_mut() {
         if let Some(Property::Var { value, .. }) = props.get_mut(name) {
             return value
-        } else {
-            unreachable!();
         }
     }
     runtime_err("Invalid property access".to_string());

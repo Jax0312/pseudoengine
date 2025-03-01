@@ -9,6 +9,7 @@ use chrono::NaiveDate;
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
 use crate::executor::variable::{Executor, Definition, get_def};
+pub use crate::executor::variable::Property;
 
 
 pub fn run(nodes: Vec<Box<Node>>) {
