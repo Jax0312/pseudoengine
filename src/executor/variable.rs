@@ -148,7 +148,6 @@ impl Executor {
 
         // assigning logic
         if var.mutable {
-            println!("{:?}", value);
             let lhs_type = match &var.t {
                 VariableType::Custom(udt) => match get_def(&mut self.defs, udt) {
                     Definition::Ref { name, ref_to } => { Some(VariableType::Pointer(ref_to)) }

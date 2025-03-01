@@ -1,4 +1,5 @@
-use crate::enums::{Node, Token};
+use std::ops::Deref;
+use crate::enums::{Node, Position, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_identifier::parse_identifier;
@@ -51,51 +52,75 @@ pub fn parse_if(lexer: &mut Lexer) -> Box<Node> {
     
 }
 
-// TODO: finish case and parsing for composite type, enum and set declaration
 pub fn parse_case(lexer: &mut Lexer) -> Box<Node> {
     // skip CASE token
     lexer.next();
     expect_token(lexer, &[TToken::Of], "'Of'");
     let cmp = parse_identifier(lexer);
     let mut cases = vec![];
+    // skip NEWLINE token
+    lexer.next();
+    
+    let mut temp = vec![];
+    let mut is_range = false;
+    let mut expr = Node::Null;
+    let mut statements = vec![];
+    let mut otherwise = vec![];
+    
+    let token_to_lit = |token: &Token| -> Node {
+        match &token.t {
+            TToken::StringLit(val) => Node::String{val: val.clone(), pos: Position::invalid() },
+            TToken::IntegerLit(val) => Node::Int {val: val.clone(), pos: Position::invalid() },
+            TToken::RealLit(val) => Node::Real {val: val.clone(), pos: Position::invalid() },
+            TToken::BoolLit(val) => Node::Boolean {val: val.clone(), pos: Position::invalid() },
+            _ => err("Invalid value", &token.pos),
+        }
+    };
     
     loop {
-        let expr;
-        // Handle case condition
-        let (c1, token) =  parse_expression(lexer, &[TToken::Colon, TToken::To]); 
-           match token.t {
-               TToken::Colon => expr = c1,
-               TToken::To => {
-                   let (c2, stop_token) = parse_expression(lexer, &[TToken::Colon]);
-                   if stop_token.t != TToken::Colon {
-                       err("':' expected", &stop_token.pos)   
-                   }
-                   expr = Box::from(Node::Range {start:c1, end:c2});
-               },
-               _ => err("':' expected", &token.pos),
-           }
-        
-        // Handle case body
-        let mut children = vec![];
-        match lexer.peek() {
-            Some(Token {t: TToken::EOF, pos}) => err("ENDCASE expected", pos),
-            Some(Token {t: TToken::EndCase, pos: _}) => {
-                lexer.next();
-                break;
-            }
-            Some(Token {t: TToken::Identifier(_), pos: _}) => {
-                let lhs = parse_identifier(lexer);
+        let token = lexer.next().unwrap(); 
+        match token {
+            Token {t: TToken::To, ..} => is_range = true,
+            Token {t: TToken::EndCase, ..} => break,
+            Token {t: TToken::EOF, pos} => err("ENDCASE expected", &pos),
+            Token {t: TToken::Otherwise, ..} => {
+                expect_token(lexer, &[TToken::Colon], "':'");
+                loop {
+                    match lexer.peek().unwrap() {
+                         Token {t: TToken::EndCase, ..} => break,
+                        Token {t: TToken::EOF, ..} => break,
+                        _ => otherwise.push(parse_line(lexer)),
+                    }    
+                }
                 
-                children.push(try_parse_assign(lexer, lhs));
-            }
-            _ => children.push(parse_line(lexer)),
+            },
+            Token {t: TToken::Newline, pos} => {
+                temp.push(token);
+                statements.push(parse_line(&mut temp.clone().into_iter().peekable()));
+                temp.clear();
+            },
+            Token {t: TToken::Colon, pos} => {
+                cases.push(Box::from(Node::Case {expr: Box::from(expr), children: statements.clone()}));
+                expr = match temp.len() {
+                    1 => token_to_lit(temp.first().unwrap()),
+                    2 => Node::Range {start: Box::from(token_to_lit(&temp[0])), end: Box::from(token_to_lit(&temp[1])) },
+                    _ => err("Invalid expression", &pos),
+                };
+                temp.clear();
+                statements.clear();
+            },
+            _ => temp.push(token),
         }
-        
     }
+
+    cases.push(Box::from(Node::Case {expr: Box::from(expr), children: statements.clone()}));
+    
+    // first case is null node
+    cases.remove(0);
     
     Box::from(Node::Switch {
-        cmp,
+        cmp: Box::from(Node::Expression(vec![cmp])),
         cases,
-        otherwise: vec![],
+        otherwise,
     })
 }

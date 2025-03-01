@@ -1,7 +1,7 @@
-TYPE PInteger = ^INTEGER
+DECLARE num : STRING
+num <- "EHY"
 
-DECLARE pNum: PInteger
-DECLARE num: INTEGER
-
-num <- 5
-pNum <- ^num
+CASE OF num
+    "Hey": OUTPUT "World"
+    OTHERWISE: OUTPUT "HAHA"
+ENDCASE

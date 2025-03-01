@@ -9,7 +9,7 @@ use crate::parser::parse_func::{parse_function, parse_procedure, parse_return};
 use crate::parser::parse_identifier::parse_identifier;
 use crate::parser::parse_io::*;
 use crate::parser::parse_loop::{parse_for, parse_repeat, parse_while};
-use crate::parser::parse_selection::parse_if;
+use crate::parser::parse_selection::{parse_case, parse_if};
 use crate::tokens::TToken;
 use crate::utils::err;
 
@@ -62,7 +62,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::PutRecord => parse_put_record(lexer),
         TToken::If => parse_if(lexer),
         TToken::Type => parse_user_defined_data(lexer),
-        // TToken::Case => parse_case(lexer),
+        TToken::Case => parse_case(lexer),
         TToken::Return => parse_return(lexer),
         TToken::Identifier(_) => {
             let lhs = parse_identifier(lexer);

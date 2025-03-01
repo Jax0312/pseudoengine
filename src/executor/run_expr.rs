@@ -225,11 +225,11 @@ fn run_comparison_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     })
 }
 
-fn assert_number(node: &Box<Node>) -> (f64, bool) {
+pub fn assert_number(node: &Box<Node>) -> (f64, bool) {
     match *node.deref() {
         Node::Int { val, .. } => (val as f64, false),
         Node::Real { val, .. } => (val, true),
-        _ => runtime_err("Arithmetic operation can only be performed on numbers".to_string()),
+        _ => runtime_err("operation can only be performed on numbers".to_string()),
     }
 }
 

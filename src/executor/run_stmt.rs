@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Node, Position, VariableType};
 use crate::enums::Node::EnumVal;
-use crate::executor::run_expr::run_expr;
+use crate::executor::run_expr::{assert_number, run_expr};
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::{runtime_err, var_type_of};
 use crate::executor::variable::{declare_def, Definition, Executor, Property};
@@ -35,6 +35,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
             step,
             body,
         } => run_for(executor, iter, range, step, body),
+        Node::Switch { cmp, cases, otherwise } => run_switch(executor, cmp, cases, otherwise),
         Node::Output { children } => run_output(executor, children),
         Node::Input { child } => run_input(executor, child),
         Node::Function {
@@ -57,6 +58,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
         _ => unimplemented!(),
     }
 }
+
 
 fn run_function(
     executor: &mut Executor,
@@ -214,6 +216,35 @@ fn run_while(executor: &mut Executor, cond: &Box<Node>, body: &Vec<Box<Node>>) {
             break;
         }
     }
+}
+
+fn run_switch(executor: &mut Executor, cmp: &Box<Node>, cases: &Vec<Box<Node>>, otherwise: &Vec<Box<Node>>) {
+    let cmp = run_expr(executor, cmp);
+    for case in cases {
+        if let Node::Case { expr, children } = case.deref() {
+            match expr.deref() {
+                Node::Range { start, end } => {
+                    let (cmp_val, _) = assert_number(&cmp);
+                    let (start_val, _) = assert_number(start);
+                    let (end_val, _) = assert_number(end);
+                    let range = start_val..end_val;
+                    if range.contains(&cmp_val) {
+                        run_stmts(executor, children);
+                        return;
+                    }
+                },
+                _ => {
+                    if cmp.deref().val_as_str() == expr.val_as_str() {
+                        run_stmts(executor, children);
+                        return;
+                    }
+                }
+            }
+        } else {
+            unreachable!();
+        }
+    }
+    run_stmts(executor, otherwise);
 }
 
 fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
