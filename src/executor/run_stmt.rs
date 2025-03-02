@@ -274,7 +274,7 @@ fn run_switch(executor: &mut Executor, cmp: &Box<Node>, cases: &Vec<Box<Node>>, 
     run_stmts(executor, otherwise);
 }
 
-fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
+pub(crate) fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
     *run_assign_inner(executor, lhs) = run_expr(executor, rhs);
 }
 
