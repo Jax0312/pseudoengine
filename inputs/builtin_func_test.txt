@@ -27,6 +27,7 @@ result <- YEAR(dummy_date) = 2005
 result <- DAYINDEX(dummy_date) = 7
 result <- SETDATE(3, 12, 2005) = dummy_date
 // TODAY skipped
+// EOF skipped
 
 IF result THEN
     OUTPUT "All test case passed"

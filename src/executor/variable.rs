@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::ops::Deref;
 
 use crate::enums::{Node, VariableType};
@@ -7,6 +8,14 @@ use crate::executor::{runtime_err, var_type_of};
 pub struct Executor {
     pub scopes: Vec<Scope>,
     pub defs: HashMap<String, Definition>,
+    pub file_handles: HashMap<String, XFile>,
+}
+
+pub struct XFile {
+    pub handle: File,
+    pub mode: String,
+    pub content: Vec<String>,
+    pub cursor: usize,
 }
 
 #[derive(Debug)]
@@ -77,6 +86,7 @@ impl Executor {
         Executor {
             scopes: vec![Scope::Global(State::new())],
             defs: HashMap::new(),
+            file_handles: HashMap::new(),
         }
     }
 
@@ -186,7 +196,7 @@ impl Executor {
         runtime_err(format!("{} is not declared", identifier))
     }
 
-    pub fn get_var_mut<'a>(&'a mut self, identifier: &String) -> &'a mut Variable {
+    pub fn get_var_mut(&mut self, identifier: &String) -> &mut Variable {
         for scope in self.scopes.iter_mut().rev() {
             match scope {
                 Scope::Global(state) => {

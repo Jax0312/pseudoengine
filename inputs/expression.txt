@@ -1,2 +1,12 @@
-DECLARE num : REAL
-INPUT num
+DECLARE buf, filename: STRING
+
+filename <- "inputs/romeo.txt"
+
+OPENFILE filename FOR READ
+
+FOR i <- 1 TO 6
+    READFILE filename, buf
+    OUTPUT EOF(filename)
+NEXT i
+
+CLOSEFILE filename

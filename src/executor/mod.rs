@@ -3,6 +3,7 @@ mod run_expr;
 mod run_io;
 mod run_stmt;
 mod variable;
+mod run_file;
 
 use std::ops::Deref;
 use chrono::NaiveDate;

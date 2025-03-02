@@ -270,7 +270,7 @@ fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Nod
         "DAYINDEX" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day_index),
         "SETDATE" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer, VariableType::Integer, VariableType::Integer], &builtin_func_set_date),
         "TODAY" => return run_fn_call_builtin(executor, call_params, &vec![], &builtin_func_today),
-        "EOF" => todo!(),
+        "EOF" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_eof),
         _ => {}
     }
 
@@ -284,7 +284,7 @@ fn run_fn_call_builtin(
     executor: &mut Executor,
     call_params: &Vec<Box<Node>>,
     fn_params: &Vec<VariableType>,
-    func: &dyn Fn(&Vec<String>) -> Box<Node>,
+    func: &dyn Fn(&mut Executor, &Vec<String>) -> Box<Node>,
 ) -> Box<Node> {
     let mut values = Vec::<String>::new();
     if call_params.len() != fn_params.len() {
@@ -299,7 +299,7 @@ fn run_fn_call_builtin(
         }
     }
 
-    func(&values)
+    func(executor, &values)
 }
 
 fn run_fn_call_inner(

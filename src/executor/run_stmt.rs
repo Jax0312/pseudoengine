@@ -6,6 +6,7 @@ use crate::enums::Node::EnumVal;
 use crate::executor::run_expr::{assert_number, run_expr};
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::{runtime_err, var_type_of};
+use crate::executor::run_file::{run_close_file, run_open_file, run_read_file, run_write_file};
 use crate::executor::variable::{declare_def, Definition, Executor, Property};
 
 use super::default_var;
@@ -55,6 +56,11 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
         }
         Node::Assignment { lhs, rhs } => run_assign(executor, lhs, rhs),
         Node::Null => (),
+        Node::OpenFile { filename, mode } => run_open_file(executor, filename, mode),
+        Node::ReadFile { filename, var } => run_read_file(executor, filename, var),
+        Node::WriteFile { filename, expr } => run_write_file(executor, filename, expr),
+        // Node::SeekFile { filename, expr } => run_seek_file(executor, filename, expr),
+        Node::CloseFile(filename) => run_close_file(executor, filename),
         _ => unimplemented!(),
     }
 }
@@ -247,7 +253,7 @@ fn run_switch(executor: &mut Executor, cmp: &Box<Node>, cases: &Vec<Box<Node>>, 
     run_stmts(executor, otherwise);
 }
 
-fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
+pub fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
     let rhs = run_expr(executor, rhs);
     match lhs.deref() {
         Node::Var { name, .. } => {
