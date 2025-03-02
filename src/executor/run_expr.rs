@@ -71,6 +71,7 @@ fn run_var(executor: &mut Executor, name: &String) -> Box<Node> {
     if let Node::RefVar(var) = variable.deref() {
         return unsafe { (**var).clone() }
     }
+    println!("{:?}", executor.get_var(name).value.clone());
     executor.get_var(name).value.clone()
 }
 
@@ -239,66 +240,17 @@ fn assert_boolean(node: &Box<Node>) -> (bool, bool) {
     }
 }
 
-fn node_is_int(executor: &mut Executor, node: Box<Node>) -> bool {
-    let expr = run_expr(executor, &node);
-    var_type_of(&expr) == VariableType::Integer
-}
-
 fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Node>>) -> Box<Node> {
-    match name.to_uppercase().as_str() {
-        "LEFT" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String, VariableType::Integer], &builtin_func_left),
-        "RIGHT" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String, VariableType::Integer], &builtin_func_right),
-        "MID" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String, VariableType::Integer, VariableType::Integer], &builtin_func_mid),
-        "LENGTH" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_length),
-        "TO_UPPER" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_to_upper),
-        "TO_LOWER" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_to_lower),
-        "NUM_TO_STR" => {
-            if node_is_int(executor, call_params[0].clone()) {
-                return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_num_to_str)
-            } return run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_num_to_str)
-        },
-        "STR_TO_NUM" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_str_to_num),
-        "IS_NUM" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_is_num),
-        "ASC" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_asc),
-        "CHR" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_chr),
-        "INT" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_int),
-        "RAND" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_rand),
-        "DAY" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day),
-        "MONTH" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_month),
-        "YEAR" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_year),
-        "DAYINDEX" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day_index),
-        "SETDATE" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer, VariableType::Integer, VariableType::Integer], &builtin_func_set_date),
-        "TODAY" => return run_fn_call_builtin(executor, call_params, &vec![], &builtin_func_today),
-        "EOF" => return run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_eof),
-        _ => {}
-    }
-
+    
+    match match_builtin(executor, name, call_params) {
+        Some(result) => return result,
+        None => {}
+    };
+    
     if let Definition::Function { params, children } = get_def(&mut executor.defs, name) {
         return run_fn_call_inner(executor, call_params, &params, &children, true);
     }
     runtime_err("Invalid function call".to_string())
-}
-
-fn run_fn_call_builtin(
-    executor: &mut Executor,
-    call_params: &Vec<Box<Node>>,
-    fn_params: &Vec<VariableType>,
-    func: &dyn Fn(&mut Executor, &Vec<String>) -> Box<Node>,
-) -> Box<Node> {
-    let mut values = Vec::<String>::new();
-    if call_params.len() != fn_params.len() {
-        runtime_err("Invalid number of arguments".to_string())
-    }
-    for (call_param, fn_param) in call_params.iter().zip(fn_params.iter()) {
-        let expr = run_expr(executor, call_param);
-        if var_type_of(&expr) == *fn_param {
-            values.push(expr.val_as_str());
-        } else {
-            runtime_err("Parameter type mismatch".to_string())
-        }
-    }
-
-    func(executor, &values)
 }
 
 fn run_fn_call_inner(

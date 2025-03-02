@@ -1,7 +1,62 @@
 use chrono::{Datelike, NaiveDate};
-use crate::enums::{Node, Position};
-use crate::executor::runtime_err;
+use crate::enums::{Node, Position, VariableType};
+use crate::executor::run_expr::run_expr;
+use crate::executor::{runtime_err, var_type_of};
 use crate::executor::variable::Executor;
+
+pub fn match_builtin(executor: &mut Executor, name: &String, call_params: &Vec<Box<Node>>) -> Option<Box<Node>> {
+    Some(match name.to_uppercase().as_str() {
+        "LEFT" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String, VariableType::Integer], &builtin_func_left),
+        "RIGHT" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String, VariableType::Integer], &builtin_func_right),
+        "MID" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String, VariableType::Integer, VariableType::Integer], &builtin_func_mid),
+        "LENGTH" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_length),
+        "TO_UPPER" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_to_upper),
+        "TO_LOWER" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_to_lower),
+        "NUM_TO_STR" => {
+            let t = var_type_of(&run_expr(executor, &call_params[0].clone()));
+            if t ==VariableType::Integer {
+                run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_num_to_str)
+            } else {run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_num_to_str)}
+        },
+        "STR_TO_NUM" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_str_to_num),
+        "IS_NUM" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_is_num),
+        "ASC" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_asc),
+        "CHR" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_chr),
+        "INT" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_int),
+        "RAND" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_rand),
+        "DAY" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day),
+        "MONTH" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_month),
+        "YEAR" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_year),
+        "DAYINDEX" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day_index),
+        "SETDATE" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer, VariableType::Integer, VariableType::Integer], &builtin_func_set_date),
+        "TODAY" => run_fn_call_builtin(executor, call_params, &vec![], &builtin_func_today),
+        "EOF" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_eof),
+        _ => return None,
+    })
+}
+
+
+fn run_fn_call_builtin(
+    executor: &mut Executor,
+    call_params: &Vec<Box<Node>>,
+    fn_params: &Vec<VariableType>,
+    func: &dyn Fn(&mut Executor, &Vec<String>) -> Box<Node>,
+) -> Box<Node> {
+    let mut values = Vec::<String>::new();
+    if call_params.len() != fn_params.len() {
+        runtime_err("Invalid number of arguments".to_string())
+    }
+    for (call_param, fn_param) in call_params.iter().zip(fn_params.iter()) {
+        let expr = run_expr(executor, call_param);
+        if var_type_of(&expr) == *fn_param {
+            values.push(expr.val_as_str());
+        } else {
+            runtime_err("Parameter type mismatch".to_string())
+        }
+    }
+
+    func(executor, &values)
+}
 
 pub fn builtin_func_left(_: &mut Executor, params: &Vec<String>) -> Box<Node> {
 

@@ -2,11 +2,14 @@ DECLARE buf, filename: STRING
 
 filename <- "inputs/romeo.txt"
 
+TYPE User
+    DECLARE Name: STRING
+    DECLARE Age: INTEGER
+ENDTYPE
+
+DECLARE user1: User
+user1.Name <- "Jaxon"
+OUTPUT user1
+
 OPENFILE filename FOR READ
-
-FOR i <- 1 TO 6
-    READFILE filename, buf
-    OUTPUT EOF(filename)
-NEXT i
-
 CLOSEFILE filename
