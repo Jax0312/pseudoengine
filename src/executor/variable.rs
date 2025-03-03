@@ -53,10 +53,11 @@ pub enum Property {
         t: Box<VariableType>,
         private: bool,
     },
-    Procedure {
+    Method {
         params: Vec<Box<Node>>,
         children: Vec<Box<Node>>,
         private: bool,
+        returns: bool,
     },
 }
 
