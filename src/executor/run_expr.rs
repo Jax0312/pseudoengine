@@ -71,7 +71,6 @@ fn run_var(executor: &mut Executor, name: &String) -> Box<Node> {
     if let Node::RefVar(var) = variable.deref() {
         return unsafe { (**var).clone() }
     }
-    println!("{:?}", executor.get_var(name).value.clone());
     executor.get_var(name).value.clone()
 }
 
@@ -247,8 +246,8 @@ fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Nod
         None => {}
     };
     
-    if let Definition::Function { params, children } = get_def(&mut executor.defs, name) {
-        return run_fn_call_inner(executor, call_params, &params, &children, true);
+    if let Definition::Function { params, mut children } = get_def(&mut executor.defs, name) {
+        return run_fn_call_inner(executor, call_params, &params, &mut children, true);
     }
     runtime_err("Invalid function call".to_string())
 }
@@ -294,7 +293,7 @@ fn run_fn_call_inner(
                 executor.exit_scope();
                 return expr;
             }
-            _ => run_stmt(executor, &child),
+            _ => run_stmt(executor, child),
         }
     }
     if returns {

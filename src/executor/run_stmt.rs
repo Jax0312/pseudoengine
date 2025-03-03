@@ -5,7 +5,7 @@ use crate::enums::{Node, Position, VariableType};
 use crate::enums::Node::EnumVal;
 use crate::executor::run_expr::{assert_number, run_expr};
 use crate::executor::run_io::{run_input, run_output};
-use crate::executor::run_file::{run_close_file, run_open_file, run_read_file, run_write_file};
+use crate::executor::run_file::{run_close_file, run_get_record, run_open_file, run_put_record, run_read_file, run_seek, run_write_file};
 use crate::executor::variable::{declare_def, Definition, Executor, Property};
 use crate::executor::{runtime_err, var_type_of};
 
@@ -59,7 +59,9 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
         Node::OpenFile { filename, mode } => run_open_file(executor, filename, mode),
         Node::ReadFile { filename, var } => run_read_file(executor, filename, var),
         Node::WriteFile { filename, expr } => run_write_file(executor, filename, expr),
-        // Node::SeekFile { filename, expr } => run_seek_file(executor, filename, expr),
+        Node::PutRecord { filename, var } => run_put_record(executor, filename, var),
+        Node::GetRecord { filename, var } => run_get_record(executor, filename, var),
+        Node::SeekFile { filename, expr } => run_seek(executor, filename, expr),
         Node::CloseFile(filename) => run_close_file(executor, filename),
         _ => unimplemented!(),
     }

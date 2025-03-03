@@ -2,14 +2,22 @@ DECLARE buf, filename: STRING
 
 filename <- "inputs/romeo.txt"
 
+
+TYPE Gender
+    DECLARE male: BOOLEAN
+ENDTYPE
+
 TYPE User
     DECLARE Name: STRING
     DECLARE Age: INTEGER
+    DECLARE gender: Gender
+    DECLARE arr: ARRAY[1:5] OF INTEGER
 ENDTYPE
 
 DECLARE user1: User
 user1.Name <- "Jaxon"
-OUTPUT user1
 
-OPENFILE filename FOR READ
+OPENFILE filename FOR RANDOM
+SEEK filename, 2
+GETRECORD filename, user1
 CLOSEFILE filename
