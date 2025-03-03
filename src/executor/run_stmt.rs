@@ -14,7 +14,7 @@ use crate::executor::run_io::{run_input, run_output};
 use crate::executor::variable::{declare_def, Definition, Executor, NodeDeref, Property};
 use crate::executor::{default_var, runtime_err, var_type_of};
 
-use super::run_class::run_composite_access;
+use super::run_class::run_access_mut;
 
 pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) {
     for node in nodes {
@@ -203,10 +203,10 @@ fn run_switch(
 
 pub(crate) fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
     match lhs.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
         _ => runtime_err("Cannot assign to value".to_string()),
     };
-    let lhs = run_composite_access(executor, lhs);
+    let lhs = run_access_mut(executor, lhs);
     let rhs = run_expr(executor, rhs);
     let lhs_type = var_type_of(lhs.borrow().deref());
     let rhs_type = var_type_of(&rhs);

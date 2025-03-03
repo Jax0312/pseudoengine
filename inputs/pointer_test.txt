@@ -2,7 +2,13 @@ TYPE Ptr = ^STRING
 
 DECLARE A : STRING
 DECLARE B : Ptr
+DECLARE C : Ptr
 
-A <- "Hello World"
+A <- "Hello World 1"
 B <- ^A
 OUTPUT B^
+B^ <- "Hello World 2"
+OUTPUT A
+C <- B
+C^ <- "Hello World 3"
+OUTPUT A

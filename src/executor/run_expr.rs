@@ -3,11 +3,13 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use crate::enums::{Index, Node, Position, VariableType};
-use crate::executor::run_class::{run_composite_access, run_composite, run_create_obj};
+use crate::executor::run_class::{run_access_mut, run_composite_access, run_create_obj};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
 use crate::executor::variable::{get_def, Definition, Executor, NodeDeref, Property};
 use crate::executor::{runtime_err, var_type_of};
 use crate::executor::run_builtins::match_builtin;
+
+use super::run_class::run_access;
 
 pub fn run_expr(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     if let Node::Expression(exprs) = node.deref() {
@@ -19,7 +21,7 @@ pub fn run_expr(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
                 Node::FunctionCall { name, params } => run_fn_call(executor, name, params),
                 Node::ArrayVar { name, indices, .. } => run_array_var(executor, name, indices),
                 Node::CreateObject(object) => run_create_obj(executor, expr),
-                Node::Composite { children } => run_composite(executor, children),
+                Node::Composite { children } => run_composite_access(executor, children),
                 Node::Reference(value) => run_reference(executor, value),
                 Node::Dereference(value) => run_dereference(executor, value),
                 _ => expr.clone(),
@@ -236,7 +238,7 @@ fn assert_boolean(node: &Box<Node>) -> (bool, bool) {
     }
 }
 
-fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Node>>) -> Box<Node> {
+pub fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Node>>) -> Box<Node> {
     match match_builtin(executor, name, call_params) {
         Some(result) => return result,
         None => {}
@@ -272,10 +274,10 @@ pub fn run_fn_call_inner(
                 let param_name = &children[0];
                 if let Node::Expression(call_param) = call_param.deref() {    
                     match call_param[0].deref() {
-                        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+                        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
                         _ => runtime_err("Cannot pass value byref".to_string()),
                     };
-                    let node = run_composite_access(executor, &call_param[0]);
+                    let node = run_access_mut(executor, &call_param[0]);
                     if var_type_of(node.borrow().deref()) == *t.deref() {
                         let value = Box::new(Node::RefVar(node.clone()));
                         executor.declare_var(param_name, value, t, true);
@@ -309,20 +311,20 @@ pub fn run_fn_call_inner(
 
 pub fn run_reference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
     match value.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
         _ => runtime_err("Cannot reference value".to_string()),
     };
-    let pointer = run_composite_access(executor, value);
+    let pointer = run_access_mut(executor, value);
     return Box::new(Node::Pointer(pointer));
 }
 
 pub fn run_dereference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
     match value.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
         _ => runtime_err("Cannot dereference value".to_string()),
     };
-    let pointer = run_composite_access(executor, value);
-    if let Node::Pointer(pointer) = pointer.borrow().deref().deref() {
+    let pointer = run_access(executor, value);
+    if let Node::Pointer(pointer) = pointer.deref() {
         return pointer.clone_node()
     }
     runtime_err("Cannot dereference value".to_string());

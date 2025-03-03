@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use crate::enums::{Index, Node, NodeRef};
-use crate::executor::run_expr::{get_array_index, run_expr, run_fn_call_inner};
+use crate::executor::run_expr::{get_array_index, run_expr, run_fn_call_inner, run_fn_call};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
 use crate::executor::variable::{declare_def, get_def, Definition, Executor, NodeDeref, Property};
 use crate::executor::{default_var, runtime_err};
@@ -121,15 +121,16 @@ fn run_method_decl(
     unreachable!()
 }
 
-pub fn run_composite_access(executor: &mut Executor, lhs: &Box<Node>) -> NodeRef {
-    match lhs.deref() {
+pub fn run_access_mut(executor: &mut Executor, node: &Box<Node>) -> NodeRef {
+    match node.deref() {
         Node::Var { name, .. } => run_var_access(executor, name),
         Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
+        Node::Dereference(value) => run_pointer_access(executor, value),
         Node::Composite { children } => {
             let mut base = match children[0].deref() {
                 Node::Var { name, .. } => run_var_access(executor, name),
                 Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-                _ => runtime_err("Invalid composite access".to_string()),
+                _ => runtime_err("Invalid value access".to_string()),
             };
             for child in children.iter().skip(1) {
                 base = match child.deref() {
@@ -137,19 +138,29 @@ pub fn run_composite_access(executor: &mut Executor, lhs: &Box<Node>) -> NodeRef
                     Node::ArrayVar { name, indices, .. } => {
                         run_array_prop_access(executor, base, name, indices)
                     }
-                    _ => runtime_err("Invalid composite access".to_string()),
+                    _ => runtime_err("Invalid value access".to_string()),
                 };
             }
             base
         }
-        _ => runtime_err("Invalid composite access".to_string()),
+        _ => runtime_err("Invalid value access".to_string()),
     }
 }
 
-pub fn run_composite(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<Node> {
+pub fn run_access(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
+    match node.deref() {
+        Node::Var { name, .. } => run_var_access(executor, name).clone_node(),
+        Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices).clone_node(),
+        Node::Composite { children } => run_composite_access(executor, children),
+        _ => runtime_err("Invalid value access".to_string()),
+    }
+}
+
+pub fn run_composite_access(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<Node> {
     let mut base = match children[0].deref() {
         Node::Var { name, .. } => run_var_access(executor, name),
         Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
+        Node::FunctionCall { name, params } => NodeRef::new_ref(run_fn_call(executor, name, params)),
         _ => runtime_err("Invalid assign statement".to_string()),
     };
     for child in children.iter().skip(1) {
@@ -165,6 +176,18 @@ pub fn run_composite(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<
         };
     }
     base.clone_node()
+}
+
+pub fn run_pointer_access(executor: &mut Executor, node: &Box<Node>) -> NodeRef {
+    match node.deref() {
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
+        _ => runtime_err("Cannot dereference value".to_string()),
+    };
+    let pointer = run_access_mut(executor, node);
+    if let Node::Pointer(value) = pointer.borrow().deref().deref() {
+        return value.clone();
+    }
+    runtime_err("Cannot dereference value".to_string());
 }
 
 fn run_var_access(executor: &mut Executor, name: &String) -> NodeRef {

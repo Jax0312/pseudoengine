@@ -6,7 +6,7 @@ use crate::executor::run_expr::run_expr;
 use crate::executor::runtime_err;
 use crate::executor::variable::Executor;
 
-use super::run_class::run_composite_access;
+use super::run_class::run_access_mut;
 use super::var_type_of;
 
 pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
@@ -28,10 +28,10 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
 
 pub fn run_input(executor: &mut Executor, child: &Box<Node>) {
     match child.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
         _ => runtime_err("Invalid input statement".to_string()),
     };
-    let node = run_composite_access(executor, child);
+    let node = run_access_mut(executor, child);
     let mut temp = String::new();
     std::io::stdin()
         .read_line(&mut temp)
