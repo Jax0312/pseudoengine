@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Deref;
+use std::rc::Rc;
 
-use crate::enums::{Node, VariableType};
+use crate::enums::{Node, NodeRef, VariableType};
 use crate::executor::{runtime_err, var_type_of};
 
 pub struct Executor {
@@ -39,7 +41,7 @@ pub enum Scope {
 
 #[derive(Debug, Clone)]
 pub struct Variable {
-    pub value: Box<Node>,
+    pub value: NodeRef,
     pub t: VariableType,
     pub mutable: bool,
 }
@@ -47,7 +49,7 @@ pub struct Variable {
 #[derive(Debug, Clone)]
 pub enum Property {
     Var {
-        value: Box<Node>,
+        value: NodeRef,
         t: Box<VariableType>,
         private: bool,
     },
@@ -106,7 +108,7 @@ impl Executor {
                     state.variables.insert(
                         identifier.clone(),
                         Variable {
-                            value,
+                            value: Rc::new(RefCell::new(value)),
                             t: *t.clone(),
                             mutable,
                         },
@@ -166,7 +168,7 @@ impl Executor {
                 _ => None
             };
             if lhs_type.unwrap_or(var.t.clone()) == rhs_type {
-                var.value = value;
+                var.value.replace(value);
             } else {
                 runtime_err(format!("Cannot assign {:?} to {:?}", rhs_type, var.t))
             }
@@ -241,3 +243,22 @@ pub fn get_def(defs: &mut HashMap<String, Definition>, identifier: &String) -> D
     runtime_err(format!("{} is not declared", identifier))
 }
 
+pub trait NodeDeref {
+    fn new_ref(node: Box<Node>) -> NodeRef;
+    fn clone_node(&self) -> Box<Node>;
+    fn clone_ref(&self) -> NodeRef;
+}
+
+impl NodeDeref for NodeRef {
+    fn new_ref(node: Box<Node>) -> NodeRef {
+        Rc::new(RefCell::new(node))
+    }
+
+    fn clone_node(&self) -> Box<Node> {
+        self.borrow().clone()
+    }
+
+    fn clone_ref(&self) -> NodeRef {
+        Rc::new(RefCell::new(self.borrow().clone()))
+    }
+}

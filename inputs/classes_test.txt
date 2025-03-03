@@ -1,17 +1,19 @@
-CLASS Pet INHERITS Snake
+CLASS Snake
     PUBLIC Name : STRING
+    PUBLIC Owners : ARRAY[1:3] OF STRING
     PUBLIC PROCEDURE NEW(GivenName : STRING)
         Name <- GivenName
+        Owners[1] <- "James"
     ENDPROCEDURE
 
     PUBLIC PROCEDURE Rename(GivenName : STRING)
-        OUTPUT Name
         Name <- GivenName
     ENDPROCEDURE
 ENDCLASS
 
-DECLARE pet: Pet
-pet <- NEW Pet("Samuel")
-pet.Rename("Simon")
-OUTPUT pet.Name
+DECLARE snake: Snake
+snake <- NEW Snake("Samuel")
+OUTPUT snake.Name, " is a snake belonging to ", snake.Owners[1]
+snake.Rename("Simon")
+OUTPUT "It's new name is ", snake.Name
 

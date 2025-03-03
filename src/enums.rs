@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
 use crate::{executor::Property, tokens::TToken};
 use chrono::NaiveDate;
 
@@ -49,6 +49,8 @@ pub struct Token {
     pub t: TToken,
     pub pos: Position,
 }
+
+pub type NodeRef = Rc<RefCell<Box<Node>>>;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -115,7 +117,7 @@ pub enum Node {
         name: String,
         ref_to: Box<VariableType>,
     },
-    RefVar(*mut Box<Node>),
+    RefVar(NodeRef),
     Reference(Box<Node>),
     Dereference(Box<Node>),
     Enum {
@@ -140,7 +142,7 @@ pub enum Node {
         pos: Position,
     },
     Array {
-        values: Vec<Box<Node>>,
+        values: Vec<NodeRef>,
         shape: Vec<Index>,
         pos: Position,
     },

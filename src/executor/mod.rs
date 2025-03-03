@@ -1,15 +1,16 @@
-mod builtin_func_def;
+mod run_builtins;
 mod run_expr;
 mod run_io;
 mod run_stmt;
+mod run_class;
 mod variable;
 mod run_file;
 
 use std::ops::Deref;
 use chrono::NaiveDate;
-use crate::enums::{Index, Node, Position, VariableType};
+use crate::enums::{Index, Node, NodeRef, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
-use crate::executor::variable::{Executor, Definition, get_def};
+use crate::executor::variable::{Executor, Definition, get_def, NodeDeref};
 pub use crate::executor::variable::Property;
 
 
@@ -79,7 +80,7 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
                 inner_t = array.t.clone();
             }
             Node::Array {
-                values: vec![default_var(executor, &inner_t); capacity as usize],
+                values: vec![NodeRef::new_ref(default_var(executor, &inner_t)); capacity as usize],
                 shape,
                 pos: Position::invalid(),
             }
