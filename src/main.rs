@@ -8,7 +8,7 @@ mod lexer;
 mod utils;
 mod executor;
 
-const FILEPATH: &str = "inputs/classes_test.txt";
+const FILEPATH: &str = "inputs/pointer_test.txt";
 
 fn main() {
     // Read input

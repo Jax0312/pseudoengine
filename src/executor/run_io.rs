@@ -6,6 +6,9 @@ use crate::executor::run_expr::run_expr;
 use crate::executor::runtime_err;
 use crate::executor::variable::Executor;
 
+use super::run_class::run_composite_access;
+use super::var_type_of;
+
 pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
     for expr in exprs {
         let res = run_expr(executor, expr);
@@ -24,49 +27,38 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
 }
 
 pub fn run_input(executor: &mut Executor, child: &Box<Node>) {
-    if let Node::Var { name, .. } = child.deref() {
-        let mut temp = String::new();
-        std::io::stdin()
-            .read_line(&mut temp)
-            .expect("Failed to read input");
-        temp = temp
-            .strip_suffix("\r\n")
-            .or(temp.strip_suffix("\n"))
-            .unwrap()
-            .parse()
-            .unwrap();
-        match executor.get_var(name).t {
-            VariableType::Integer => executor.set_var(
-                name,
-                Box::new(Node::Int {
-                    val: temp.parse::<i64>().expect("Invalid INTEGER value input"),
-                    pos: Position::invalid(),
-                }),
-            ),
-            VariableType::String => executor.set_var(
-                name,
-                Box::new(Node::String {
-                    val: temp,
-                    pos: Position::invalid(),
-                }),
-            ),
-            VariableType::Real => executor.set_var(
-                name,
-                Box::new(Node::Real {
-                    val: temp.parse::<f64>().expect("Invalid REAL value input"),
-                    pos: Position::invalid(),
-                }),
-            ),
-            VariableType::Boolean => executor.set_var(
-                name,
-                Box::new(Node::Boolean {
-                    val: temp.to_lowercase() == "TRUE",
-                    pos: Position::invalid(),
-                }),
-            ),
-            _ => runtime_err("Invalid type".to_string()),
-        };
-    } else {
-        runtime_err("Invalid input statement".to_string());
-    }
+    match child.deref() {
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        _ => runtime_err("Invalid input statement".to_string()),
+    };
+    let node = run_composite_access(executor, child);
+    let mut temp = String::new();
+    std::io::stdin()
+        .read_line(&mut temp)
+        .expect("Failed to read input");
+    temp = temp
+        .strip_suffix("\r\n")
+        .or(temp.strip_suffix("\n"))
+        .unwrap()
+        .parse()
+        .unwrap();
+    let node = match var_type_of(node.borrow().deref()) {
+        VariableType::Integer => Box::new(Node::Int {
+            val: temp.parse::<i64>().expect("Invalid INTEGER value input"),
+            pos: Position::invalid(),
+        }),
+        VariableType::String => Box::new(Node::String {
+            val: temp,
+            pos: Position::invalid(),
+        }),
+        VariableType::Real => Box::new(Node::Real {
+            val: temp.parse::<f64>().expect("Invalid REAL value input"),
+            pos: Position::invalid(),
+        }),
+        VariableType::Boolean => Box::new(Node::Boolean {
+            val: temp.to_lowercase() == "TRUE",
+            pos: Position::invalid(),
+        }),
+        _ => runtime_err("Invalid type".to_string()),
+    };
 }

@@ -1,18 +1,17 @@
 mod run_builtins;
+mod run_class;
 mod run_expr;
+mod run_file;
 mod run_io;
 mod run_stmt;
-mod run_class;
 mod variable;
-mod run_file;
 
-use std::ops::Deref;
-use chrono::NaiveDate;
 use crate::enums::{Index, Node, NodeRef, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
-use crate::executor::variable::{Executor, Definition, get_def, NodeDeref};
 pub use crate::executor::variable::Property;
-
+use crate::executor::variable::{get_def, Definition, Executor, NodeDeref};
+use chrono::NaiveDate;
+use std::ops::Deref;
 
 pub fn run(nodes: Vec<Box<Node>>) {
     let mut executor = Executor::new();
@@ -39,7 +38,12 @@ pub fn var_type_of(node: &Box<Node>) -> VariableType {
         Node::String { .. } => VariableType::String,
         Node::Date { .. } => VariableType::Date,
         Node::EnumVal { family, .. } => VariableType::Custom(family.clone()),
+        Node::Pointer(value) => {
+            let inner_type = var_type_of(value.borrow().deref());
+            VariableType::Pointer(Box::new(inner_type))
+        }
         Node::Object { name, .. } => VariableType::Custom(name.clone()),
+        Node::NullObject(var_type) => var_type.clone(),
         _ => unimplemented!(),
     }
 }
@@ -86,13 +90,16 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             }
         }
         VariableType::Custom(name) => match get_def(&mut executor.defs, name) {
-            Definition::Class { props, name } => return Box::new(Node::Object{ props, name }),
-            Definition::Record { props, name } => return Box::new(Node::Object{ props, name }),
-            Definition::Enum {..} => return Box::from(Node::Null),
-            Definition::Ref { .. } => return Box::from(Node::Null),
+            Definition::Class { props, name } => return Box::new(Node::Object { props, name }),
+            Definition::Record { props, name } => return Box::new(Node::Object { props, name }),
+            Definition::Enum { name } => {
+                return Box::from(Node::NullObject(VariableType::Custom((name))))
+            }
+            Definition::Pointer { ref_to, .. } => {
+                return Box::from(Node::NullObject(VariableType::Pointer(ref_to.clone())))
+            }
             _ => runtime_err("Invalid type".to_string()),
         },
         _ => unimplemented!(),
     })
 }
-

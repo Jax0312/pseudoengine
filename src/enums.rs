@@ -117,6 +117,7 @@ pub enum Node {
         name: String,
         ref_to: Box<VariableType>,
     },
+    Pointer(NodeRef),
     RefVar(NodeRef),
     Reference(Box<Node>),
     Dereference(Box<Node>),
@@ -225,6 +226,7 @@ pub enum Node {
         children: Vec<Box<Node>>,
     },
     Null,
+    NullObject(VariableType),
 }
 
 impl Node {

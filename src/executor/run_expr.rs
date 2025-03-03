@@ -20,6 +20,8 @@ pub fn run_expr(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
                 Node::ArrayVar { name, indices, .. } => run_array_var(executor, name, indices),
                 Node::CreateObject(object) => run_create_obj(executor, expr),
                 Node::Composite { children } => run_composite(executor, children),
+                Node::Reference(value) => run_reference(executor, value),
+                Node::Dereference(value) => run_dereference(executor, value),
                 _ => expr.clone(),
             };
             stack.push(expr);
@@ -240,8 +242,8 @@ fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Nod
         None => {}
     };
     
-    if let Definition::Function { params, children } = get_def(&mut executor.defs, name) {
-        return run_fn_call_inner(executor, call_params, &params, &children, true);
+    if let Definition::Function { params, children, returns } = get_def(&mut executor.defs, name) {
+        return run_fn_call_inner(executor, call_params, &params, &children, returns);
     }
     runtime_err("Invalid function call".to_string())
 }
@@ -268,7 +270,11 @@ pub fn run_fn_call_inner(
         } else if let Node::Reference(reference) = fn_param.deref() {
             if let Node::Declare { t, children } = reference.deref() {
                 let param_name = &children[0];
-                if let Node::Expression(call_param) = call_param.deref() {
+                if let Node::Expression(call_param) = call_param.deref() {    
+                    match call_param[0].deref() {
+                        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+                        _ => runtime_err("Cannot pass value byref".to_string()),
+                    };
                     let node = run_composite_access(executor, &call_param[0]);
                     if var_type_of(node.borrow().deref()) == *t.deref() {
                         let value = Box::new(Node::RefVar(node.clone()));
@@ -283,6 +289,9 @@ pub fn run_fn_call_inner(
     for child in children {
         match child.deref() {
             Node::Return(expr) => {
+                if !returns {
+                    runtime_err("Cannot return within procedure".to_string())
+                }
                 let expr = run_expr(executor, expr);
                 executor.exit_scope();
                 return expr;
@@ -296,4 +305,25 @@ pub fn run_fn_call_inner(
         executor.exit_scope();
         Box::new(Node::Null)
     }
+}
+
+pub fn run_reference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
+    match value.deref() {
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        _ => runtime_err("Cannot reference value".to_string()),
+    };
+    let pointer = run_composite_access(executor, value);
+    return Box::new(Node::Pointer(pointer));
+}
+
+pub fn run_dereference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
+    match value.deref() {
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        _ => runtime_err("Cannot dereference value".to_string()),
+    };
+    let pointer = run_composite_access(executor, value);
+    if let Node::Pointer(pointer) = pointer.borrow().deref().deref() {
+        return pointer.clone_node()
+    }
+    runtime_err("Cannot dereference value".to_string());
 }

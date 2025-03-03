@@ -1,0 +1,8 @@
+TYPE Ptr = ^STRING
+
+DECLARE A : STRING
+DECLARE B : Ptr
+
+A <- "Hello World"
+B <- ^A
+OUTPUT B^

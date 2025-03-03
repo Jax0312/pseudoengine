@@ -66,6 +66,7 @@ pub enum Definition {
     Function {
         params: Vec<Box<Node>>,
         children: Vec<Box<Node>>,
+        returns: bool,
     },
     Class {
         name: String,
@@ -78,7 +79,7 @@ pub enum Definition {
     Enum {
         name: String,
     },
-    Ref {
+    Pointer {
         name: String,
         ref_to: Box<VariableType>,
     }
@@ -118,63 +119,6 @@ impl Executor {
                     runtime_err(format!("{} is already initialized", identifier))
                 }
             }
-        }
-    }
-
-
-    // Assign value to variable with type checking
-    pub fn set_var(&mut self, identifier: &String, value: Box<Node>) {
-        let rhs_type = match value.deref() {
-            Node::Reference(val) => {
-                if let Node::Var { name, pos } = val.deref() {
-                    VariableType::Pointer(Box::from(self.get_var(&name).t.clone()))
-                } else {
-                    unreachable!()
-                }
-            },
-            _ => var_type_of(&value),
-        };
-
-
-        let mut var = None;
-        for scope in self.scopes.iter_mut().rev() {
-            match scope {
-                Scope::Global(ref mut state) => {
-                    if let Some(_var) = state.variables.get_mut(identifier) {
-                        var = Some(_var);
-                    } else {
-                        break;
-                    }
-                },
-                Scope::Local(ref mut state) => {
-                    if let Some(_var) = state.variables.get_mut(identifier) {
-                        var = Some(_var);
-                    }
-                }
-            }
-        }
-
-        let var = match var {
-            Some(var) => var,
-            None => runtime_err(format!("{} is not declared", identifier))
-        };
-
-        // assigning logic
-        if var.mutable {
-            let lhs_type = match &var.t {
-                VariableType::Custom(udt) => match get_def(&mut self.defs, udt) {
-                    Definition::Ref { name, ref_to } => { Some(VariableType::Pointer(ref_to)) }
-                    _ => None,
-                }
-                _ => None
-            };
-            if lhs_type.unwrap_or(var.t.clone()) == rhs_type {
-                var.value.replace(value);
-            } else {
-                runtime_err(format!("Cannot assign {:?} to {:?}", rhs_type, var.t))
-            }
-        } else {
-            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
         }
     }
 

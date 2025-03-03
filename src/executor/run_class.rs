@@ -129,7 +129,7 @@ pub fn run_composite_access(executor: &mut Executor, lhs: &Box<Node>) -> NodeRef
             let mut base = match children[0].deref() {
                 Node::Var { name, .. } => run_var_access(executor, name),
                 Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-                _ => runtime_err("Invalid assign statement".to_string()),
+                _ => runtime_err("Invalid composite access".to_string()),
             };
             for child in children.iter().skip(1) {
                 base = match child.deref() {
@@ -137,12 +137,12 @@ pub fn run_composite_access(executor: &mut Executor, lhs: &Box<Node>) -> NodeRef
                     Node::ArrayVar { name, indices, .. } => {
                         run_array_prop_access(executor, base, name, indices)
                     }
-                    _ => runtime_err("Invalid property access".to_string()),
+                    _ => runtime_err("Invalid composite access".to_string()),
                 };
             }
             base
         }
-        _ => runtime_err("Invalid assign statement".to_string()),
+        _ => runtime_err("Invalid composite access".to_string()),
     }
 }
 
@@ -168,11 +168,14 @@ pub fn run_composite(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<
 }
 
 fn run_var_access(executor: &mut Executor, name: &String) -> NodeRef {
-    let value = &executor.get_var_mut(name).value;
-    if let Node::RefVar(reference) = value.borrow().deref().deref() {
+    let var = &executor.get_var_mut(name);
+    if !var.mutable {
+        runtime_err(format!("{} is a constant, it's value cannot be modified", name))
+    }
+    if let Node::RefVar(reference) = var.value.borrow().deref().deref() {
         return reference.clone();
     }
-    value.clone()
+    var.value.clone()
 }
 
 fn run_array_access(executor: &mut Executor, name: &String, indices: &Vec<Box<Node>>) -> NodeRef {
@@ -183,8 +186,11 @@ fn run_array_access(executor: &mut Executor, name: &String, indices: &Vec<Box<No
             _ => unreachable!(),
         })
         .collect::<Vec<i64>>();
-    let node = &executor.get_var_mut(name).value;
-    if let Node::Array { values, shape, .. } = node.borrow().deref().deref() {
+    let var = &executor.get_var_mut(name);
+    if !var.mutable {
+        runtime_err(format!("{} is a constant, it's value cannot be modified", name))
+    }
+    if let Node::Array { values, shape, .. } = var.value.borrow().deref().deref() {
         return values[get_array_index(indices, shape)].clone();
     };
     runtime_err("Invalid array access".to_string());

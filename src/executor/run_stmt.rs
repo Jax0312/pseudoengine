@@ -1,17 +1,18 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::format;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use crate::enums::Node::EnumVal;
 use crate::enums::{Node, NodeRef, Position, VariableType};
+use crate::executor::run_class::{run_class, run_record};
+use crate::executor::run_expr::get_array_index;
 use crate::executor::run_expr::{assert_number, run_expr};
 use crate::executor::run_file::{run_close_file, run_open_file, run_read_file, run_write_file};
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::variable::{declare_def, Definition, Executor, NodeDeref, Property};
 use crate::executor::{default_var, runtime_err, var_type_of};
-use crate::executor::run_expr::get_array_index;
-use crate::executor::run_class::{run_class, run_record};
 
 use super::run_class::run_composite_access;
 
@@ -25,7 +26,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
     match node.deref() {
         Node::Declare { t, children } => run_declare(executor, children, t),
         Node::Const { name, val, .. } => run_const(executor, name, val),
-        Node::RefType { name, ref_to } => run_ref_type(executor, name, ref_to),
+        Node::RefType { name, ref_to } => run_pointer(executor, name, ref_to),
         Node::Enum { name, variants } => run_enum(executor, name, variants),
         Node::If {
             cond,
@@ -51,7 +52,13 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
             params,
             children,
             ..
-        } => run_function(executor, name, params, children),
+        } => run_function(executor, name, params, children, true),
+        Node::Procedure {
+            name,
+            params,
+            children,
+            ..
+        } => run_function(executor, name, params, children, false),
         Node::Class {
             name,
             base,
@@ -77,6 +84,7 @@ fn run_function(
     identifier: &Box<Node>,
     params: &Vec<Box<Node>>,
     children: &Vec<Box<Node>>,
+    returns: bool,
 ) {
     if let Node::String { val, .. } = identifier.deref() {
         return declare_def(
@@ -85,19 +93,20 @@ fn run_function(
             Definition::Function {
                 params: params.clone(),
                 children: children.clone(),
+                returns,
             },
         );
     }
     runtime_err("Invalid function declaration".to_string())
 }
 
-fn run_ref_type(executor: &mut Executor, name: &String, ref_type: &Box<VariableType>) {
+fn run_pointer(executor: &mut Executor, name: &String, pointer: &Box<VariableType>) {
     declare_def(
         &mut executor.defs,
         name,
-        Definition::Ref {
+        Definition::Pointer {
             name: name.clone(),
-            ref_to: ref_type.clone(),
+            ref_to: pointer.clone(),
         },
     );
 }
@@ -193,8 +202,21 @@ fn run_switch(
 }
 
 pub(crate) fn run_assign(executor: &mut Executor, lhs: &Box<Node>, rhs: &Box<Node>) {
+    match lhs.deref() {
+        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } => {}
+        _ => runtime_err("Cannot assign to value".to_string()),
+    };
     let lhs = run_composite_access(executor, lhs);
-    lhs.replace(run_expr(executor, rhs));
+    let rhs = run_expr(executor, rhs);
+    let lhs_type = var_type_of(lhs.borrow().deref());
+    let rhs_type = var_type_of(&rhs);
+    if lhs_type != rhs_type {
+        runtime_err(format!(
+            "Cannot assign type {:?} to type {:?}",
+            rhs_type, lhs_type
+        ))
+    }
+    lhs.replace(rhs);
 }
 
 fn run_for(
@@ -223,13 +245,11 @@ fn run_for(
                 true,
             );
             while start <= end {
-                executor.set_var(
-                    name,
-                    Box::new(Node::Int {
-                        val: start,
-                        pos: Position::invalid(),
-                    }),
-                );
+                let var = &executor.get_var_mut(name).value;
+                var.replace(Box::new(Node::Int {
+                    val: start,
+                    pos: Position::invalid(),
+                }));
                 start += step;
                 run_stmts(executor, &body);
             }
