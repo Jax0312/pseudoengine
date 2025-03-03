@@ -244,8 +244,8 @@ pub fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box
         None => {}
     };
     
-    if let Definition::Function { params, children, returns } = get_def(&mut executor.defs, name) {
-        return run_fn_call_inner(executor, call_params, &params, &children, returns);
+    if let Definition::Function { params, mut children, returns } = get_def(&mut executor.defs, name) {
+        return run_fn_call_inner(executor, call_params, &params, &mut children, returns);
     }
     runtime_err("Invalid function call".to_string())
 }
@@ -298,7 +298,7 @@ pub fn run_fn_call_inner(
                 executor.exit_scope();
                 return expr;
             }
-            _ => run_stmt(executor, &child),
+            _ => run_stmt(executor, child),
         }
     }
     if returns {

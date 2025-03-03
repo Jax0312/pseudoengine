@@ -130,6 +130,6 @@ pub fn parse_put_record(lexer: &mut Lexer) -> Box<Node> {
     }
     Box::from(Node::PutRecord {
         filename,
-        var,
+        var: Box::from(Node::Expression(vec![var])),
     })
 }
