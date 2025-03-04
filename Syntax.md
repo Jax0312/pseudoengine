@@ -264,8 +264,9 @@ TO_LOWER(s : STRING) RETURNS STRING
 // Converts a number into a string
 NUM_TO_STR(x : REAL) RETURNS STRING
 
-// Converts a string into a number, returning 0 if the number is invalid
+// Converts a string into a REAL or INTEGER
 STR_TO_NUM(s : STRING) RETURNS REAL
+STR_TO_NUM(s : STRING) RETURNS INTEGER
 
 // Returns whether a string is a valid number
 IS_NUM(s : STRING) RETURNS BOOLEAN
@@ -302,6 +303,7 @@ TODAY() RETURNS DATE
 ```
 // Returns the integer part of a real(floor)
 INT(x : REAL) RETURNS INTEGER
+INT(x : INTEGER) RETURNS INTEGER
 
 // Returns a random number from 0 to x inclusive
 RAND(x : INTEGER) RETURNS REAL

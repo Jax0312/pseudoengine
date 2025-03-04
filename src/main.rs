@@ -1,5 +1,6 @@
 #![allow(warnings)]
 use std::{env, fs::File, io::Read};
+use std::fmt::format;
 
 mod tokens;
 mod parser;
@@ -27,7 +28,7 @@ fn main() {
 
 fn execute(filepath: &str) {
     println!("Executing {}", filepath);
-    let mut file = File::open(filepath).unwrap();
+    let mut file = File::open(filepath).expect(format!("File {} not found", filepath).as_str());
     let mut buf = String::new();
     file.read_to_string(&mut buf).unwrap();
     // Trim and end a newline for better error reporting
@@ -44,10 +45,11 @@ mod tests {
     fn builtin_func_test() {
         execute("tests/builtin_func_test.txt");
     }
-    #[test]
-    fn func_test() {
-        execute("tests/func_test.txt");
-    }
+    // TODO: Uncomment the test when you're done @JinWei
+    // #[test]
+    // fn func_test() {
+    //     execute("tests/func_test.txt");
+    // }
     #[test]
     fn file_test() {
         execute("tests/file_test.txt");

@@ -22,7 +22,12 @@ pub fn match_builtin(executor: &mut Executor, name: &String, call_params: &Vec<B
         "IS_NUM" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_is_num),
         "ASC" => run_fn_call_builtin(executor, call_params, &vec![VariableType::String], &builtin_func_asc),
         "CHR" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_chr),
-        "INT" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_int),
+        "INT" => {
+            let t = var_type_of(&run_expr(executor, &call_params[0].clone()));
+            if t == VariableType::Integer {
+                run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_int)
+            } else {run_fn_call_builtin(executor, call_params, &vec![VariableType::Real], &builtin_func_int)}
+        }
         "RAND" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Integer], &builtin_func_rand),
         "DAY" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_day),
         "MONTH" => run_fn_call_builtin(executor, call_params, &vec![VariableType::Date], &builtin_func_month),
@@ -104,7 +109,7 @@ pub fn builtin_func_mid(_: &mut Executor, params: &Vec<String>) -> Box<Node> {
         Err(_) => runtime_err("Length for 'MID' function cannot be less than 0".to_string()),
     };
 
-    if start + length > operand.len() {
+    if start + length > operand.len() + 1 {
         runtime_err("Substring length for 'MID' function cannot exceed string length".to_string())
     }
 

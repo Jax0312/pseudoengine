@@ -1,17 +1,13 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::format;
-use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
+
+use std::ops::{Deref};
 
 use crate::enums::Node::EnumVal;
-use crate::enums::{Node, NodeRef, Position, VariableType};
+use crate::enums::{Node, Position, VariableType};
 use crate::executor::run_class::{run_class, run_record, run_access_mut};
-use crate::executor::run_expr::get_array_index;
 use crate::executor::run_expr::{assert_number, run_expr};
 use crate::executor::run_io::{run_input, run_output};
 use crate::executor::run_file::{run_close_file, run_get_record, run_open_file, run_put_record, run_read_file, run_seek, run_write_file};
-use crate::executor::variable::{declare_def, Definition, Executor, Property};
+use crate::executor::variable::{declare_def, Definition, Executor};
 use crate::executor::{runtime_err, var_type_of, default_var};
 
 pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) {
@@ -75,7 +71,7 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) {
         Node::GetRecord { filename, var } => run_get_record(executor, filename, var),
         Node::SeekFile { filename, expr } => run_seek(executor, filename, expr),
         Node::CloseFile(filename) => run_close_file(executor, filename),
-        _ => unimplemented!(),
+        _ => runtime_err(format!("Unsupported node {:?}", node.deref())),
     }
 }
 
@@ -235,15 +231,17 @@ fn run_for(
             } else {
                 as_number_expr(executor, step)
             };
-            executor.declare_var(
-                name,
-                Box::new(Node::Int {
-                    val: start,
-                    pos: Position::invalid(),
-                }),
-                &Box::new(VariableType::Integer),
-                true,
-            );
+            if !executor.var_exist(name) {
+                executor.declare_var(
+                    name,
+                    Box::new(Node::Int {
+                        val: start,
+                        pos: Position::invalid(),
+                    }),
+                    &Box::new(VariableType::Integer),
+                    true,
+                );                
+            }
             while start <= end {
                 let var = &executor.get_var_mut(name).value;
                 var.replace(Box::new(Node::Int {

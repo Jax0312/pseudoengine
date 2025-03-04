@@ -1,11 +1,10 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
-use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::enums::{Node, NodeRef, VariableType};
-use crate::executor::{runtime_err, var_type_of};
+use crate::executor::{runtime_err};
 
 pub struct Executor {
     pub scopes: Vec<Scope>,
@@ -122,6 +121,26 @@ impl Executor {
                 }
             }
         }
+    }
+    
+    pub fn var_exist(&self, identifier: &String) -> bool {
+        for scope in self.scopes.iter().rev() {
+            match scope {
+                Scope::Global(state) => {
+                    if let Some(_) = state.variables.get(identifier) {
+                        return true;
+                    } else {
+                        break;
+                    }
+                }
+                Scope::Local(state) => {
+                    if let Some(_) = state.variables.get(identifier) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 
     pub fn get_var(&self, identifier: &String) -> &Variable {

@@ -1,0 +1,27 @@
+PROCEDURE Parse(InString: STRING)
+
+    DECLARE temp, current: STRING
+    DECLARE total, count: INTEGER
+    
+    FOR i <- 1 TO LENGTH(InString)
+        current <- MID(InString, i, 1)
+        IF current = "," THEN
+            total <- total + INT(STR_TO_NUM(temp))
+            count <- count + 1
+            temp <- ""
+        ELSE
+            temp <- temp & current
+        ENDIF
+        
+    NEXT i
+    
+    total <- total + INT(STR_TO_NUM(temp))
+    count <- count + 1
+    
+    OUTPUT "Total is ", total
+    OUTPUT "Average is ", total / count
+    
+ENDPROCEDURE
+
+CALL Parse("12,13,451,22")
+CALL Parse("10,200,30,400")

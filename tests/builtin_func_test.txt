@@ -8,7 +8,7 @@ result <- TRUE
 
 result <- LEFT(dummy_string, 4) = "AStr"
 result <- RIGHT(dummy_string, 2) = "ng"
-result <- MID(dummy_string, 2, 5) = "Strin"
+result <- MID(dummy_string, 7, 1) = "g"
 result <- LENGTH(dummy_string) = 7
 result <- TO_UPPER(dummy_string) = "ASTRING"
 result <- TO_LOWER(dummy_string) = "astring"

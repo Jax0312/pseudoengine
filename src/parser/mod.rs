@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::vec;
 
 use crate::enums::{Node, Token};
@@ -69,6 +70,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
             let lhs = parse_identifier(lexer);
             try_parse_assign(lexer, lhs)
         }
+        TToken::Call => parse_call(lexer),
         TToken::Newline | TToken::EOF => {
             lexer.next();
             Box::new(Node::Null)
@@ -83,6 +85,17 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         ),
         _ => err("Invalid syntax", &lexer.peek().unwrap().pos),
     }
+}
+
+fn parse_call(lexer: &mut Lexer) -> Box<Node> {
+    lexer.next();
+    let func_call = parse_identifier(lexer);
+    if let Node::FunctionCall {..} = func_call.deref() {
+        Box::from(Node::Expression(vec![func_call]))    
+    } else {
+        err("PROCEDURE expected", &lexer.peek().unwrap().pos);
+    }
+    
 }
 
 fn try_parse_assign(lexer: &mut Lexer, lhs: Box<Node>) -> Box<Node> {
