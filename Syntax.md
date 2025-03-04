@@ -1,4 +1,5 @@
-# Pseudocode Syntax
+# Pseudocode Syntax 
+*In respect to Pseudocode Guide 2026*
 ## Comments
 ```
 // This is a comment
@@ -13,9 +14,10 @@ Available data types:
 - INTEGER
 - REAL
 - BOOLEAN
-- CHAR
 - STRING
 - DATE
+
+CHAR type does not exist as CHAR and STRING are treated as the same during examination
 
 Dates are in the format dd/mm/yyyy, literals are used like `3/14/2020`
 
@@ -61,10 +63,7 @@ myArray[index1, index2, ...] <- <value>
 ```
 CONSTANT <name> = <value>
 ```
-or
-```
-CONSTANT <name> <- <value>
-```
+
 
 ## Types
 ### Enum definition
@@ -123,11 +122,6 @@ Result of division operator will always be of type `REAL`
 - DIV - Integer division
 - MOD - Modulus
 
-Function style syntax may be used for DIV and MOD:
-```
-DIV(x, y)
-MOD(x, y)
-```
 
 ## Comparison operators
 - \> (Greater than)
@@ -152,32 +146,31 @@ If statement:
 ```
 IF <condition> THEN
     ...
-ELSE IF <another condition> THEN
-    ...
 ELSE
     ...
 ENDIF
 ```
-- `ELSE IF` and `ELSE` statements are optional
-- Any number of `ELSE IF` statements can be used
+- `ELSE` statements is optional
+
 
 Case statement:
 ```
 CASE OF <variable>
     <case 1> : ...
     <case 2> : ...
+    <case 3> TO <case 4>: ... 
     ...
     <case n> : ...
     OTHERWISE: ...
 ENDCASE
 ```
 - `OTHERWISE` is optional
-- cases may be expressions, e.g (var / 2 + 1)
+- cases may only be literals or a numerical range using `TO`
 
 ## Loops
 While loop:
 ```
-WHILE <condition> DO
+WHILE <condition>
     ...
 ENDWHILE
 ```
@@ -276,22 +269,12 @@ STR_TO_NUM(s : STRING) RETURNS REAL
 
 // Returns whether a string is a valid number
 IS_NUM(s : STRING) RETURNS BOOLEAN
-```
-
-#### Char functions
-
-```
-// Converts a character into lowercase if it is alphabetic
-LCASE(c : CHAR) RETURNS CHAR
-
-// Converts a character into uppercase if it is alphabetic
-UCASE(c : CHAR) RETURNS CHAR
 
 // Returns the ASCII value of a character
-ASC(c : CHAR) RETURNS INTEGER
+ASC(c : STRING) RETURNS INTEGER
 
 // Returns the character representation of an ASCII value
-CHR(x : INTEGER) RETURNS CHAR
+CHR(x : INTEGER) RETURNS STRING
 ```
 
 #### Date functions
@@ -315,32 +298,6 @@ SETDATE(Day, Month, Year : INTEGER) RETURNS DATE
 TODAY() RETURNS DATE
 ```
 
-#### Math functions
-```
-// Power
-POW(x : REAL, y : REAL) RETURNS REAL
-
-// e^x
-EXP(x : REAL) RETURNS REAL
-
-// Trigonometric functions
-SIN(x : REAL) RETURNS REAL
-COS(x : REAL) RETURNS REAL
-TAN(x : REAL) RETURNS REAL
-ASIN(x : REAL) RETURNS REAL
-ACOS(x : REAL) RETURNS REAL
-ATAN(x : REAL) RETURNS REAL
-ATAN2(y : REAL, x : REAL) RETURNS REAL
-
-// Square root
-SQRT(x : REAL) RETURNS REAL
-
-// Logarithm(Base 10)
-LOG(x : REAL) RETURNS REAL
-
-// Natural logarithm
-LN(x : REAL) RETURNS REAL
-```
 #### Misc functions
 ```
 // Returns the integer part of a real(floor)
@@ -357,8 +314,6 @@ EOF(filename : STRING) RETURNS BOOLEAN
 ### Output to screen
 ```
 OUTPUT <value>
-or
-PRINT <value>
 ```
 Multiple values can be output at once with
 ```
@@ -374,7 +329,7 @@ Gets user input and stores it in the given variable
 ### File Handling
 ```
 // Open a file
-// Modes are READ, WRITE and APPEND
+// Modes are READ, WRITE, APPEND and RANDOM
 // WRITE mode creates the file if it doesn't exist
 OPENFILE <filename> FOR <mode>
 
@@ -384,15 +339,54 @@ READFILE <filename>, <variable>
 // Writes a line with data provided(requires WRITE or APPEND mode)
 WRITEFILE <filename>, <data>
 
+// Serialise and writes a RECORD data type to file(requires RANDOM mode)
+PUTRECORD <filename>, <data>
+
+// read and de-serialise a RECORD data type from file(requires RANDOM mode)
+GETRECORD <filename>, <variable>
+
+// Move the file cursor to the specified line(requires RANDOM mode)
+SEEK <filename>, <value>
+
 // Closes the file
 CLOSEFILE <filename>
 ```
 
-## Other features(outside cambridge format)
-- `BREAK` - Break out of loops early
-- `CONTINUE` - Skip to next iteration of loop
-- Alternate method of type conversion(apart from in-built functions): `<data type>(<value>)`. For example: `INTEGER("57")` 
-- Character escape codes like `\n`, `\t` etc.
+### Class and Inheritance
+Class with constructor:
 
-# Examples
-See [tests](./tests)
+Constructor is defined as a PROCEDURE with name NEW
+```
+CLASS Pet
+    PRIVATE Name : STRING
+        // 
+        PUBLIC PROCEDURE NEW(GivenName : STRING)
+        Name ← GivenName
+    ENDPROCEDURE
+ENDCLASS
+```
+
+Inheritance is denoted by the INHERITS keyword; superclass/parent class methods will be called using the
+keyword SUPER, for example:
+```
+CLASS Cat INHERITS Pet
+    PRIVATE Breed: INTEGER
+    PUBLIC PROCEDURE NEW(GivenName : STRING, GivenBreed : STRING)
+        SUPER.NEW(GivenName)
+        Breed ← GivenBreed
+    ENDPROCEDURE
+ENDCLASS
+```
+
+To create an object, the following format is used:
+```
+<object name> ← NEW <class name>(<param1>, <param2> ...)
+```
+For example:
+```
+MyCat ← NEW Cat("Kitty", "Shorthaired")
+```
+
+`PUBLIC` methods and properties can be accessed from outside the class whereas `PRIVATE` methods and properties cannot
+
+
