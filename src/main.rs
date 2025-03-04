@@ -1,5 +1,6 @@
 #![allow(warnings)]
 use std::{env, fs::File, io::Read};
+use std::fmt::format;
 
 mod tokens;
 mod parser;
@@ -8,7 +9,7 @@ mod lexer;
 mod utils;
 mod executor;
 
-const DEBUG_FILEPATH: &str = "tests/file_test.txt";
+const DEBUG_FILEPATH: &str = "tests/test.txt";
 
 fn main() {
     // Read input
@@ -27,7 +28,7 @@ fn main() {
 
 fn execute(filepath: &str) {
     println!("Executing {}", filepath);
-    let mut file = File::open(filepath).unwrap();
+    let mut file = File::open(filepath).expect(format!("File {} not found", filepath).as_str());
     let mut buf = String::new();
     file.read_to_string(&mut buf).unwrap();
     // Trim and end a newline for better error reporting

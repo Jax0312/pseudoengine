@@ -17,6 +17,12 @@ PROCEDURE set_obj_by_ref(BYREF K : A)
     K.Y <- 4
 ENDPROCEDURE
 
+FUNCTION add(a: INTEGER, b: INTEGER) RETURNS INTEGER
+    IF TRUE = TRUE
+        RETURN a + b
+    ENDIF
+ENDFUNCTION
+
 X.Y <- 1
 Z[1] <- 2
 
@@ -32,3 +38,4 @@ OUTPUT "Set Z[1] by ref: ", Z[1]
 
 set_obj_by_ref(X)
 OUTPUT "Set X by ref: ", X.Y
+OUTPUT add(5, 2)
