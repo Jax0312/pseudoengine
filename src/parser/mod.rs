@@ -39,6 +39,7 @@ pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
         children: main_children,
     }));
 
+    #[cfg(debug_assertions)]
     println!("\nAST\n{:#?}", nodes);
 
     nodes

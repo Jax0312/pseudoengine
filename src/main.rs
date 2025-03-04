@@ -1,5 +1,5 @@
 #![allow(warnings)]
-use std::{fs::File, io::Read};
+use std::{env, fs::File, io::Read};
 
 mod tokens;
 mod parser;
@@ -8,12 +8,26 @@ mod lexer;
 mod utils;
 mod executor;
 
-const FILEPATH: &str = "inputs/file_test.txt";
+const DEBUG_FILEPATH: &str = "tests/file_test.txt";
 
 fn main() {
     // Read input
-    println!("Executing {}", FILEPATH);
-    let mut file = File::open(FILEPATH).unwrap();
+    println!("The current directory is {}",  env::current_dir().unwrap().display());
+    let filepath = if cfg!(debug_assertions) {
+        DEBUG_FILEPATH
+    } else {
+        let args: Vec<String> = env::args().collect();
+        &*match args.get(1) {
+            Some(arg) => arg.clone(),
+            None => panic!("Missing filepath argument"),
+        }
+    };
+    execute(filepath);
+}
+
+fn execute(filepath: &str) {
+    println!("Executing {}", filepath);
+    let mut file = File::open(filepath).unwrap();
     let mut buf = String::new();
     file.read_to_string(&mut buf).unwrap();
     // Trim and end a newline for better error reporting
@@ -22,5 +36,30 @@ fn main() {
     let mut lex = lexer::lexer(&mut buf.chars()).into_iter().peekable();
     let ast = parser::parse_file(&mut lex);
     executor::run(ast);
+}
+#[cfg(test)]
+mod tests {
+    use crate::execute;
+    #[test]
+    fn builtin_func_test() {
+        execute("tests/builtin_func_test.txt");
+    }
+    #[test]
+    fn func_test() {
+        execute("tests/func_test.txt");
+    }
+    #[test]
+    fn file_test() {
+        execute("tests/file_test.txt");
+    }
+    #[test]
+    fn classes_test() {
+        execute("tests/classes_test.txt");
+    }
+    #[test]
+    fn pointer_test() {
+        execute("tests/pointer_test.txt");
+    }
+    
 }
 

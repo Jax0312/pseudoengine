@@ -1,6 +1,6 @@
 DECLARE buf, filename: STRING
 
-filename <- "inputs/romeo.txt"
+filename <- "tests/dummy.txt"
 
 
 TYPE Gender
