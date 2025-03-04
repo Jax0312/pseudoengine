@@ -17,10 +17,16 @@ PROCEDURE set_obj_by_ref(BYREF K : A)
     K.Y <- 4
 ENDPROCEDURE
 
-FUNCTION add(a: INTEGER, b: INTEGER) RETURNS INTEGER
-    IF TRUE = TRUE
-        RETURN a + b
+FUNCTION return_if() RETURNS INTEGER
+    IF TRUE = TRUE THEN
+        RETURN 6
     ENDIF
+ENDFUNCTION
+
+FUNCTION return_while() RETURNS INTEGER
+    WHILE TRUE = TRUE
+        RETURN 7
+    ENDWHILE
 ENDFUNCTION
 
 X.Y <- 1
@@ -38,4 +44,6 @@ OUTPUT "Set Z[1] by ref: ", Z[1]
 
 set_obj_by_ref(X)
 OUTPUT "Set X by ref: ", X.Y
-OUTPUT add(5, 2)
+
+OUTPUT "Return within if ", return_if()
+OUTPUT "Return within while ", return_while()

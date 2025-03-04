@@ -10,6 +10,7 @@ use crate::executor::{runtime_err, var_type_of};
 use crate::executor::run_builtins::match_builtin;
 
 use super::run_class::run_access;
+use super::run_stmt::run_stmts;
 
 pub fn run_expr(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     if let Node::Expression(exprs) = node.deref() {
@@ -288,18 +289,12 @@ pub fn run_fn_call_inner(
             }
         }
     }
-    for child in children {
-        match child.deref() {
-            Node::Return(expr) => {
-                if !returns {
-                    runtime_err("Cannot return within procedure".to_string())
-                }
-                let expr = run_expr(executor, expr);
-                executor.exit_scope();
-                return expr;
-            }
-            _ => run_stmt(executor, child),
+    if let Some(expr) = run_stmts(executor, children) {
+        if !returns {
+            runtime_err("Cannot return within procedure".to_string())
         }
+        executor.exit_scope();
+        return expr;
     }
     if returns {
         runtime_err("Missing return statement".to_string())

@@ -21,7 +21,7 @@ pub fn run(nodes: Vec<Box<Node>>) {
         match *node {
             Node::Main { mut children } => run_stmts(&mut executor, &mut children),
             _ => unimplemented!(),
-        }
+        };
     }
 }
 
