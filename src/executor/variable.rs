@@ -70,6 +70,7 @@ pub enum Definition {
     },
     Class {
         name: String,
+        base: Box<Definition>,
         props: HashMap<String, Property>,
     },
     Record {
@@ -82,7 +83,8 @@ pub enum Definition {
     Pointer {
         name: String,
         ref_to: Box<VariableType>,
-    }
+    },
+    Null
 }
 
 impl Executor {

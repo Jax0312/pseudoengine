@@ -11,6 +11,7 @@ use crate::executor::run_stmt::run_stmts;
 pub use crate::executor::variable::Property;
 use crate::executor::variable::{get_def, Definition, Executor, NodeDeref};
 use chrono::NaiveDate;
+use std::collections::HashMap;
 use std::ops::Deref;
 
 pub fn run(nodes: Vec<Box<Node>>) {
@@ -90,8 +91,11 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             }
         }
         VariableType::Custom(name) => match get_def(&mut executor.defs, name) {
-            Definition::Class { props, name } => return Box::new(Node::Object { props, name }),
-            Definition::Record { props, name } => return Box::new(Node::Object { props, name }),
+            Definition::Class { props, base, name } => def_base_class(props, base, name),
+            Definition::Record { props, name } => {
+                let base = Box::new(Node::Null);
+                return Box::new(Node::Object { props, base, name });
+            },
             Definition::Enum { name } => {
                 return Box::from(Node::NullObject(VariableType::Custom((name))))
             }
@@ -102,4 +106,12 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
         },
         _ => unimplemented!(),
     })
+}
+
+pub fn def_base_class(props: HashMap<String, Property>, base: Box<Definition>, name: String) -> Node {
+    let base = Box::new(match base.deref().clone() {
+        Definition::Class { props, base, name } => def_base_class(props, base, name),
+        _ => Node::Null,
+    });
+    Node::Object { props, base, name }
 }

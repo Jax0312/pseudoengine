@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
-use crate::enums::{Index, Node, NodeRef};
-use crate::executor::run_expr::{get_array_index, run_expr, run_fn_call_inner, run_fn_call};
+use crate::enums::{Index, Node, NodeRef, VariableType};
+use crate::executor::run_expr::{get_array_index, run_expr, run_fn_call, run_fn_call_inner};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
 use crate::executor::variable::{declare_def, get_def, Definition, Executor, NodeDeref, Property};
-use crate::executor::{default_var, runtime_err};
+use crate::executor::{def_base_class, default_var, runtime_err};
+
+use super::var_type_of;
 
 pub fn run_class(
     executor: &mut Executor,
@@ -25,17 +27,16 @@ pub fn run_class(
         }
     }
     if let Node::String { val, .. } = name.deref() {
-        if let Node::String { val, .. } = base.deref() {
-            let base = get_def(&mut executor.defs, val);
-            if let Definition::Class { props, .. } = base {
-                class_props.extend(props);
-            }
-        }
+        let base = match base.deref() {
+            Node::String { val, .. } => get_def(&mut executor.defs, val),
+            _ => Definition::Null,
+        };
         return declare_def(
             &mut executor.defs,
             val,
             Definition::Class {
                 name: val.clone(),
+                base: Box::new(base),
                 props: class_props,
             },
         );
@@ -150,7 +151,9 @@ pub fn run_access_mut(executor: &mut Executor, node: &Box<Node>) -> NodeRef {
 pub fn run_access(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     match node.deref() {
         Node::Var { name, .. } => run_var_access(executor, name).clone_node(),
-        Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices).clone_node(),
+        Node::ArrayVar { name, indices, .. } => {
+            run_array_access(executor, name, indices).clone_node()
+        }
         Node::Composite { children } => run_composite_access(executor, children),
         _ => runtime_err("Invalid value access".to_string()),
     }
@@ -160,8 +163,10 @@ pub fn run_composite_access(executor: &mut Executor, children: &Vec<Box<Node>>) 
     let mut base = match children[0].deref() {
         Node::Var { name, .. } => run_var_access(executor, name),
         Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-        Node::FunctionCall { name, params } => NodeRef::new_ref(run_fn_call(executor, name, params)),
-        _ => runtime_err("Invalid assign statement".to_string()),
+        Node::FunctionCall { name, params } => {
+            NodeRef::new_ref(run_fn_call(executor, name, params))
+        }
+        _ => runtime_err("Invalid value access".to_string()),
     };
     for child in children.iter().skip(1) {
         base = match child.deref() {
@@ -172,7 +177,7 @@ pub fn run_composite_access(executor: &mut Executor, children: &Vec<Box<Node>>) 
             Node::FunctionCall { name, params, .. } => {
                 return run_method_call(executor, base, name, params);
             }
-            _ => runtime_err("Invalid property access".to_string()),
+            _ => runtime_err("Invalid value access".to_string()),
         };
     }
     base.clone_node()
@@ -180,7 +185,10 @@ pub fn run_composite_access(executor: &mut Executor, children: &Vec<Box<Node>>) 
 
 pub fn run_pointer_access(executor: &mut Executor, node: &Box<Node>) -> NodeRef {
     match node.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
+        Node::Var { .. }
+        | Node::ArrayVar { .. }
+        | Node::Composite { .. }
+        | Node::Dereference(_) => {}
         _ => runtime_err("Cannot dereference value".to_string()),
     };
     let pointer = run_access_mut(executor, node);
@@ -193,7 +201,10 @@ pub fn run_pointer_access(executor: &mut Executor, node: &Box<Node>) -> NodeRef 
 fn run_var_access(executor: &mut Executor, name: &String) -> NodeRef {
     let var = &executor.get_var_mut(name);
     if !var.mutable {
-        runtime_err(format!("{} is a constant, it's value cannot be modified", name))
+        runtime_err(format!(
+            "{} is a constant, it's value cannot be modified",
+            name
+        ))
     }
     if let Node::RefVar(reference) = var.value.borrow().deref().deref() {
         return reference.clone();
@@ -211,12 +222,33 @@ fn run_array_access(executor: &mut Executor, name: &String, indices: &Vec<Box<No
         .collect::<Vec<i64>>();
     let var = &executor.get_var_mut(name);
     if !var.mutable {
-        runtime_err(format!("{} is a constant, it's value cannot be modified", name))
+        runtime_err(format!(
+            "{} is a constant, it's value cannot be modified",
+            name
+        ))
     }
-    if let Node::Array { values, shape, .. } = var.value.borrow().deref().deref() {
+    let value = match var.value.borrow().deref().deref() {
+        Node::RefVar(reference) => reference.clone(),
+        _ => var.value.clone()
+    };
+    if let Node::Array { values, shape, .. } = value.borrow().deref().deref() {
         return values[get_array_index(indices, shape)].clone();
     };
     runtime_err("Invalid array access".to_string());
+}
+
+fn run_base_prop_access(
+    name: &String,
+    base: &Box<Node>,
+    props: &HashMap<String, Property>,
+) -> Option<Property> {
+    if let Some(value) = props.get(name) {
+        return Some(value.clone());
+    } else if let Node::Object { base, props, .. } = base.deref() {
+        return run_base_prop_access(name, base, props);
+    } else {
+        return None;
+    }
 }
 
 fn run_array_prop_access(
@@ -225,9 +257,10 @@ fn run_array_prop_access(
     name: &String,
     indices: &Vec<Box<Node>>,
 ) -> NodeRef {
-    if let Node::Object { props, .. } = base.borrow().deref().deref() {
-        if let Some(Property::Var { value, private, .. }) = props.get(name) {
-            if *private {
+    if let Node::Object { props, base, .. } = base.borrow().deref().deref() {
+        let prop = run_base_prop_access(name, base, props);
+        if let Some(Property::Var { value, private, .. }) = prop {
+            if private {
                 runtime_err("Cannot access private property".to_string())
             }
             if let Node::Array { values, shape, .. } = value.borrow().deref().deref() {
@@ -246,12 +279,13 @@ fn run_array_prop_access(
 }
 
 fn run_prop_access(base: NodeRef, name: &String) -> NodeRef {
-    if let Node::Object { props, .. } = base.borrow().deref().deref() {
-        if let Some(Property::Var { value, private, .. }) = props.get(name) {
-            if *private {
+    if let Node::Object { props, base, .. } = base.borrow().deref().deref() {
+        let prop = run_base_prop_access(name, base, props);
+        if let Some(Property::Var { value, private, .. }) = prop {
+            if private {
                 runtime_err("Cannot access private property".to_string())
             }
-            return value.clone();
+            return value;
         }
     }
     runtime_err("Invalid property access".to_string());
@@ -271,6 +305,12 @@ fn run_method_call(
                 executor.declare_var(name, value, &t, true);
             }
         }
+        executor.declare_var(
+            &"super".to_string(),
+            Box::new(Node::RefVar(base.clone())),
+            &Box::new(var_type_of(base.borrow().deref())),
+            true,
+        );
         if let Some(Property::Method {
             params: fn_params,
             children,
@@ -286,40 +326,41 @@ fn run_method_call(
             return result;
         }
     }
-    runtime_err("Invalid property access".to_string())
+    runtime_err("Invalid method access".to_string())
 }
 
 pub fn run_create_obj(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     if let Node::FunctionCall { params, name } = node.deref() {
-        if let Definition::Class { props, .. } = get_def(&mut executor.defs, name) {
+        if let Definition::Class { props, base, .. } = get_def(&mut executor.defs, name) {
             if let Some(Property::Method {
                 private,
                 params: fn_params,
                 children,
                 ..
-            }) = props.get("new")
+            }) = props.clone().get("new")
             {
-                if !private {
-                    executor.enter_scope();
+                if *private {
+                    runtime_err("Constructor cannot be private".to_string())
+                }
+                executor.enter_scope();
+                let node = def_base_class(props, base, name.clone());
+                if let Node::Object { name, base, props } = &node {
                     for (name, prop) in props.iter() {
                         if let Property::Var { value, t, .. } = prop {
-                            executor.declare_var(name, value.clone_node(), t, true);
+                            let value = Box::new(Node::RefVar(value.clone()));
+                            executor.declare_var(name, value, t, true);
                         }
                     }
+                    executor.declare_var(
+                        &"super".to_string(),
+                        Box::new(Node::RefVar(NodeRef::new_ref(base.clone()))),
+                        &Box::new(var_type_of(&base)),
+                        true,
+                    );
                     run_fn_call_inner(executor, params, fn_params, children, false);
-                    let mut props = props.clone();
-                    for (name, prop) in props.iter_mut() {
-                        if let Property::Var { value, .. } = prop {
-                            *value = executor.get_var(name).value.clone()
-                        }
-                    }
                     executor.exit_scope();
-                    return Box::new(Node::Object {
-                        name: name.clone(),
-                        props,
-                    });
+                    return Box::new(node);
                 }
-                runtime_err("Constructor cannot be private".to_string())
             }
             runtime_err("Constructor is not defined".to_string())
         }

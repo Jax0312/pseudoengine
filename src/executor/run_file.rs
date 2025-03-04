@@ -140,20 +140,15 @@ pub fn run_get_record(executor: &mut Executor, filename: &Box<Node>, destination
         )),
     };
 
-    if let Node::Object {
-        name: _name,
-        props: _props,
-    } = dest_content.deref()
-    {
-        let name = _name.clone();
-        let mut props = _props.clone();
-        deserialise_record(&mut props, &mut data);
+    if let Node::Object { name, base, props } = dest_content.deref() {
+        deserialise_record(&props, &data);
         run_assign(
             executor,
             &destination,
             &Box::from(Node::Expression(vec![Box::from(Node::Object {
-                name,
-                props,
+                name: name.clone(),
+                props: props.clone(),
+                base: base.clone(),
             })])),
         );
     }
@@ -207,18 +202,19 @@ pub fn run_put_record(executor: &mut Executor, filename: &Box<Node>, data: &Box<
     file.content[file.cursor - 1] = json_string;
 }
 
-fn deserialise_record(props: &HashMap<String, Property>, data: &mut Map<String, Value>) {
+fn deserialise_record(props: &HashMap<String, Property>, data: &Map<String, Value>) {
     props.iter().for_each(|(k, property)| {
-        match data.get_mut(k) {
+        match data.get(k) {
             Some(dv) => {
                 if let Property::Var { value, ref t, .. } = property {
                     value.replace(Box::from(
-                        if let Node::Object { name, props } = &value.clone_node().deref() {
+                        if let Node::Object { name, props, base } = &value.clone_node().deref() {
                             // handle nested record type
-                            if let Value::Object(map) = data.get_mut(name).unwrap() {
+                            if let Value::Object(map) = data.get(name).unwrap() {
                                 deserialise_record(props, map);
                                 Node::Object {
                                     name: name.clone(),
+                                    base: base.clone(),
                                     props: props.clone(),
                                 }
                             } else {

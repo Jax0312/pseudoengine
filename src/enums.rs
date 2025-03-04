@@ -65,6 +65,7 @@ pub enum Node {
     },
     Object {
         name: String,
+        base: Box<Node>,
         props: HashMap<String, Property>,
     },
     Function {

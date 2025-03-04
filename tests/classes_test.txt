@@ -1,5 +1,8 @@
 CLASS Pet
     PUBLIC Species : STRING
+    PUBLIC PROCEDURE NEW(GivenSpecies : STRING)
+        Species <- GivenSpecies
+    ENDPROCEDURE
 ENDCLASS
 
 CLASS Snake INHERITS Pet
@@ -7,9 +10,9 @@ CLASS Snake INHERITS Pet
     PUBLIC Owners : ARRAY[1:3] OF STRING
     PRIVATE Age: INTEGER
     PUBLIC PROCEDURE NEW(GivenName : STRING, GivenAge: INTEGER)
+        super.new("snake")
         Name <- GivenName
         Age <- GivenAge
-        Species <- "snake"
         Owners[1] <- "James"
     ENDPROCEDURE
 
