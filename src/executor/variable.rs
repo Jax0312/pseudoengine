@@ -4,11 +4,10 @@ use std::fs::File;
 use std::rc::Rc;
 
 use crate::enums::{Node, NodeRef, VariableType};
-use crate::executor::{runtime_err};
+use crate::executor::runtime_err;
 
 pub struct Executor {
     pub scopes: Vec<Scope>,
-    pub defs: HashMap<String, Definition>,
     pub file_handles: HashMap<String, XFile>,
 }
 
@@ -22,12 +21,14 @@ pub struct XFile {
 #[derive(Debug)]
 pub struct State {
     pub variables: HashMap<String, Variable>,
+    pub defs: HashMap<String, Definition>,
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
+            defs: HashMap::new(),
         }
     }
 }
@@ -45,7 +46,7 @@ pub struct Variable {
     pub mutable: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Property {
     Var {
         value: NodeRef,
@@ -83,14 +84,13 @@ pub enum Definition {
         name: String,
         ref_to: Box<VariableType>,
     },
-    Null
+    Null,
 }
 
 impl Executor {
     pub fn new() -> Executor {
         Executor {
             scopes: vec![Scope::Global(State::new())],
-            defs: HashMap::new(),
             file_handles: HashMap::new(),
         }
     }
@@ -103,7 +103,13 @@ impl Executor {
         self.scopes.pop().unwrap()
     }
 
-    pub fn declare_var(&mut self, identifier: &String, value: Box<Node>, t: &Box<VariableType>, mutable: bool) {
+    pub fn declare_var(
+        &mut self,
+        identifier: &String,
+        value: Box<Node>,
+        t: &Box<VariableType>,
+        mutable: bool,
+    ) {
         let scope = self.scopes.last_mut().unwrap();
         match scope {
             Scope::Global(ref mut state) | Scope::Local(ref mut state) => {
@@ -122,7 +128,7 @@ impl Executor {
             }
         }
     }
-    
+
     pub fn var_exist(&self, identifier: &String) -> bool {
         for scope in self.scopes.iter().rev() {
             match scope {
@@ -172,7 +178,10 @@ impl Executor {
                         if var.mutable {
                             return var;
                         } else {
-                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+                            runtime_err(format!(
+                                "{} is a constant, it's value cannot be modified",
+                                identifier
+                            ))
                         }
                     } else {
                         break;
@@ -183,7 +192,10 @@ impl Executor {
                         if var.mutable {
                             return var;
                         } else {
-                            runtime_err(format!("{} is a constant, it's value cannot be modified", identifier))
+                            runtime_err(format!(
+                                "{} is a constant, it's value cannot be modified",
+                                identifier
+                            ))
                         }
                     }
                 }
@@ -192,21 +204,32 @@ impl Executor {
 
         runtime_err(format!("{} is not declared", identifier))
     }
-}
 
-pub fn declare_def(defs: &mut HashMap<String, Definition>, identifier: &String, def: Definition) {
-    if !defs.contains_key(identifier) {
-        defs.insert(identifier.clone(), def);
-        return;
+    pub fn declare_def(&mut self, identifier: &String, def: Definition) {
+        let scope = self.scopes.last_mut().unwrap();
+        match scope {
+            Scope::Global(ref mut state) | Scope::Local(ref mut state) => {
+                if !state.defs.contains_key(identifier) {
+                    state.defs.insert(identifier.clone(), def.clone());
+                } else {
+                    runtime_err(format!("{} is already declared", identifier))
+                }
+            }
+        }
     }
-    runtime_err(format!("{} is already declared", identifier))
-}
 
-pub fn get_def(defs: &mut HashMap<String, Definition>, identifier: &String) -> Definition {
-    if defs.contains_key(identifier) {
-        return defs.get(identifier).unwrap().clone();
+    pub fn get_def(&mut self, identifier: &String) -> Definition {
+        for scope in self.scopes.iter().rev() {
+            match scope {
+                Scope::Global(state) | Scope::Local(state) => {
+                    if let Some(def) = state.defs.get(identifier) {
+                        return def.clone();
+                    }
+                }
+            }
+        }
+        runtime_err(format!("{} is not declared", identifier))
     }
-    runtime_err(format!("{} is not declared", identifier))
 }
 
 pub trait NodeDeref {

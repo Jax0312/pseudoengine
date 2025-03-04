@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::enums::{Index, Node, Position, VariableType};
 use crate::executor::run_class::{run_access_mut, run_composite_access, run_create_obj};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
-use crate::executor::variable::{get_def, Definition, Executor, NodeDeref, Property};
+use crate::executor::variable::{Definition, Executor, NodeDeref, Property};
 use crate::executor::{runtime_err, var_type_of};
 use crate::executor::run_builtins::match_builtin;
 
@@ -245,7 +245,7 @@ pub fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box
         None => {}
     };
     
-    if let Definition::Function { params, mut children, returns } = get_def(&mut executor.defs, name) {
+    if let Definition::Function { params, mut children, returns } = executor.get_def(name) {
         return run_fn_call_inner(executor, call_params, &params, &mut children, returns);
     }
     runtime_err("Invalid function call".to_string())

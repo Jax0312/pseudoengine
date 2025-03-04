@@ -9,7 +9,7 @@ use crate::executor::run_file::{
     run_write_file,
 };
 use crate::executor::run_io::{run_input, run_output};
-use crate::executor::variable::{declare_def, Definition, Executor};
+use crate::executor::variable::{Definition, Executor};
 use crate::executor::{default_var, runtime_err, var_type_of};
 
 pub fn run_stmts(executor: &mut Executor, nodes: &Vec<Box<Node>>) -> Option<Box<Node>> {
@@ -101,8 +101,7 @@ fn run_function(
     returns: bool,
 ) {
     if let Node::String { val, .. } = identifier.deref() {
-        return declare_def(
-            &mut executor.defs,
+        return executor.declare_def(
             val,
             Definition::Function {
                 params: params.clone(),
@@ -115,8 +114,7 @@ fn run_function(
 }
 
 fn run_pointer(executor: &mut Executor, name: &String, pointer: &Box<VariableType>) {
-    declare_def(
-        &mut executor.defs,
+    executor.declare_def(
         name,
         Definition::Pointer {
             name: name.clone(),
@@ -130,8 +128,7 @@ fn run_const(executor: &mut Executor, identifier: &String, val: &Box<Node>) {
 }
 
 fn run_enum(executor: &mut Executor, name: &String, variants: &[Box<Node>]) {
-    declare_def(
-        &mut executor.defs,
+    executor.declare_def(
         name,
         Definition::Enum { name: name.clone() },
     );

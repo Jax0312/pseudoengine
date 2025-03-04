@@ -9,7 +9,7 @@ mod lexer;
 mod utils;
 mod executor;
 
-const DEBUG_FILEPATH: &str = "tests/func_test.txt";
+const DEBUG_FILEPATH: &str = "tests/classes_test.txt";
 
 fn main() {
     // Read input

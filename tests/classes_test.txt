@@ -20,15 +20,19 @@ CLASS Snake INHERITS Pet
         Name <- GivenName
     ENDPROCEDURE
 
-    PUBLIC FUNCTION GetAge() RETURNS INTEGER
+    PRIVATE FUNCTION GetAge() RETURNS INTEGER
         RETURN Age
     ENDFUNCTION
+
+    PUBLIC PROCEDURE OutputAge()
+        OUTPUT Name, " is ", GetAge(), " years old"
+    ENDPROCEDURE
 ENDCLASS
 
 DECLARE snake: Snake
 snake <- NEW Snake("Samuel", 25)
 OUTPUT snake.Name, " is a ", snake.Species
-OUTPUT snake.Name, " is ", snake.GetAge(), " years old"
+snake.OutputAge()
 OUTPUT snake.Name, " belongs to ", snake.Owners[1]
 snake.Rename("Simon")
 OUTPUT "Samuel's new name is ", snake.Name

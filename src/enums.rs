@@ -53,7 +53,7 @@ pub struct Token {
 pub type NodeRef = Rc<RefCell<Box<Node>>>;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Node {
     Main {
         children: Vec<Box<Node>>,

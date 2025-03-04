@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use crate::enums::{Index, Node, NodeRef, VariableType};
 use crate::executor::run_expr::{get_array_index, run_expr, run_fn_call, run_fn_call_inner};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
-use crate::executor::variable::{declare_def, get_def, Definition, Executor, NodeDeref, Property};
+use crate::executor::variable::{Definition, Executor, NodeDeref, Property};
 use crate::executor::{def_base_class, default_var, runtime_err};
 
 use super::var_type_of;
@@ -28,11 +28,10 @@ pub fn run_class(
     }
     if let Node::String { val, .. } = name.deref() {
         let base = match base.deref() {
-            Node::String { val, .. } => get_def(&mut executor.defs, val),
+            Node::String { val, .. } => executor.get_def(val),
             _ => Definition::Null,
         };
-        return declare_def(
-            &mut executor.defs,
+        return executor.declare_def(
             val,
             Definition::Class {
                 name: val.clone(),
@@ -56,8 +55,7 @@ pub fn run_record(executor: &mut Executor, name: &String, children: &Vec<Box<Nod
             }
         }
     }
-    declare_def(
-        &mut executor.defs,
+    executor.declare_def(
         name,
         Definition::Record {
             name: name.clone(),
@@ -229,7 +227,7 @@ fn run_array_access(executor: &mut Executor, name: &String, indices: &Vec<Box<No
     }
     let value = match var.value.borrow().deref().deref() {
         Node::RefVar(reference) => reference.clone(),
-        _ => var.value.clone()
+        _ => var.value.clone(),
     };
     if let Node::Array { values, shape, .. } = value.borrow().deref().deref() {
         return values[get_array_index(indices, shape)].clone();
@@ -297,20 +295,7 @@ fn run_method_call(
     name: &String,
     call_params: &Vec<Box<Node>>,
 ) -> Box<Node> {
-    if let Node::Object { props, .. } = base.borrow().deref().deref() {
-        executor.enter_scope();
-        for (name, prop) in props.iter() {
-            if let Property::Var { value, t, .. } = prop {
-                let value = Box::new(Node::RefVar(value.clone()));
-                executor.declare_var(name, value, &t, true);
-            }
-        }
-        executor.declare_var(
-            &"super".to_string(),
-            Box::new(Node::RefVar(base.clone())),
-            &Box::new(var_type_of(base.borrow().deref())),
-            true,
-        );
+    if let Node::Object { props, base, .. } = base.borrow().deref().deref() {
         if let Some(Property::Method {
             params: fn_params,
             children,
@@ -318,6 +303,36 @@ fn run_method_call(
             returns,
         }) = props.get(name)
         {
+            executor.enter_scope();
+            for (name, prop) in props.iter() {
+                if let Property::Var { value, t, .. } = prop {
+                    let value = Box::new(Node::RefVar(value.clone()));
+                    executor.declare_var(name, value, &t, true);
+                } else if let Property::Method {
+                    params,
+                    children,
+                    returns,
+                    ..
+                } = prop.clone()
+                {
+                    executor.declare_def(
+                        name,
+                        Definition::Function {
+                            params,
+                            children,
+                            returns,
+                        },
+                    );
+                }
+            }
+            if Node::Null != *base.deref() {
+                executor.declare_var(
+                    &"super".to_string(),
+                    Box::new(Node::RefVar(NodeRef::new_ref(base.clone()))),
+                    &Box::new(var_type_of(base)),
+                    true,
+                );
+            }
             if *private {
                 runtime_err("Cannot call private method".to_string())
             }
@@ -325,44 +340,18 @@ fn run_method_call(
             executor.exit_scope();
             return result;
         }
+        runtime_err("Method does not exist".to_string())
     }
     runtime_err("Invalid method access".to_string())
 }
 
 pub fn run_create_obj(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     if let Node::FunctionCall { params, name } = node.deref() {
-        if let Definition::Class { props, base, .. } = get_def(&mut executor.defs, name) {
-            if let Some(Property::Method {
-                private,
-                params: fn_params,
-                children,
-                ..
-            }) = props.clone().get("new")
-            {
-                if *private {
-                    runtime_err("Constructor cannot be private".to_string())
-                }
-                executor.enter_scope();
-                let node = def_base_class(props, base, name.clone());
-                if let Node::Object { name, base, props } = &node {
-                    for (name, prop) in props.iter() {
-                        if let Property::Var { value, t, .. } = prop {
-                            let value = Box::new(Node::RefVar(value.clone()));
-                            executor.declare_var(name, value, t, true);
-                        }
-                    }
-                    executor.declare_var(
-                        &"super".to_string(),
-                        Box::new(Node::RefVar(NodeRef::new_ref(base.clone()))),
-                        &Box::new(var_type_of(&base)),
-                        true,
-                    );
-                    run_fn_call_inner(executor, params, fn_params, children, false);
-                    executor.exit_scope();
-                    return Box::new(node);
-                }
-            }
-            runtime_err("Constructor is not defined".to_string())
+        if let Definition::Class { props, base, name } = executor.get_def(name) {
+            let base = def_base_class(props, base, name.clone());
+            let base_ref = NodeRef::new_ref(Box::new(base));
+            run_method_call(executor, base_ref.clone(), &"new".to_string(), params);
+            return base_ref.clone_node();
         }
         runtime_err(format!("{} is not a class", name))
     }

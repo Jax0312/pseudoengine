@@ -9,7 +9,7 @@ mod variable;
 use crate::enums::{Index, Node, NodeRef, Position, VariableType};
 use crate::executor::run_stmt::run_stmts;
 pub use crate::executor::variable::Property;
-use crate::executor::variable::{get_def, Definition, Executor, NodeDeref};
+use crate::executor::variable::{Definition, Executor, NodeDeref};
 use chrono::NaiveDate;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -90,7 +90,7 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
                 pos: Position::invalid(),
             }
         }
-        VariableType::Custom(name) => match get_def(&mut executor.defs, name) {
+        VariableType::Custom(name) => match executor.get_def(name) {
             Definition::Class { props, base, name } => def_base_class(props, base, name),
             Definition::Record { props, name } => {
                 let base = Box::new(Node::Null);
