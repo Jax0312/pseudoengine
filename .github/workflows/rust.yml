@@ -1,7 +1,8 @@
+name: Rust
+
 on:
   push:
     branches: [release]
-  pull_request:
 
 jobs:
   build:
@@ -29,7 +30,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_WORKFLOW }}
         with:
           tag_name: "release"
           files: |
