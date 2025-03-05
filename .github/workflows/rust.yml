@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [v1, main]
+    branches: [release]
   pull_request:
 
 jobs:
