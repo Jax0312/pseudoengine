@@ -34,3 +34,4 @@ jobs:
           tag_name: "release"
           files: |
             target/release/pseudoengine.exe
+            target/release/pseudoengine
