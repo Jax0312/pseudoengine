@@ -3,11 +3,11 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use crate::enums::{Index, Node, Position, VariableType};
+use crate::executor::run_builtins::match_builtin;
 use crate::executor::run_class::{run_access_mut, run_composite_access, run_create_obj};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
 use crate::executor::variable::{Definition, Executor, NodeDeref, Property};
 use crate::executor::{runtime_err, var_type_of};
-use crate::executor::run_builtins::match_builtin;
 
 use super::run_class::run_access;
 use super::run_stmt::run_stmts;
@@ -57,7 +57,10 @@ pub fn get_array_index(indices: Vec<i64>, shape: &Vec<Index>) -> usize {
     for (shape, index) in shape.iter().zip(indices).rev() {
         // bound check
         if index < shape.lower || index > shape.upper {
-            runtime_err(format!("Index out of bounds: {} is not in range of {}..{}", index, shape.lower, shape.upper));
+            runtime_err(format!(
+                "Index out of bounds: {} is not in range of {}..{}",
+                index, shape.lower, shape.upper
+            ));
         }
         // 1D index calculation, bounds are inclusive hence +1
         total_index += (index - shape.lower) * size;
@@ -90,64 +93,87 @@ fn run_op(stack: &mut Vec<Box<Node>>, op: &String) -> Box<Node> {
 fn run_concat_op(stack: &mut Vec<Box<Node>>) -> Box<Node> {
     let rhs = stack.pop().expect("Invalid operation");
     let lhs = stack.pop().expect("Invalid operation");
-    
+
     if var_type_of(&rhs) == VariableType::String && var_type_of(&rhs) == var_type_of(&lhs) {
-        Box::from(Node::String { val: format!("{}{}", lhs.val_as_str(), rhs.val_as_str()), pos: Position::invalid() })
+        Box::from(Node::String {
+            val: format!("{}{}", lhs.val_as_str(), rhs.val_as_str()),
+            pos: Position::invalid(),
+        })
     } else {
         runtime_err("'&' can only be performed on STRING".to_string())
     }
-    
 }
 
 // function for equality op
 fn run_eq_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     let rhs = stack.pop().expect("Invalid operation");
     let lhs = stack.pop().expect("Invalid operation");
-    
+
     match lhs.deref() {
-        Node::Int {..} | Node::Real{..} | Node::Boolean {..} | Node::String {..} | Node::Date {..} | Node::EnumVal {..} => {},
-        Node::Array {..} => runtime_err(format!("Equality check between ARRAY is not a valid operation {}", crate::utils::SUPPORT_MESSAGE)),
+        Node::Int { .. }
+        | Node::Real { .. }
+        | Node::Boolean { .. }
+        | Node::String { .. }
+        | Node::Date { .. }
+        | Node::EnumVal { .. } => {}
+        Node::Array { .. } => runtime_err(format!(
+            "Equality check between ARRAY is not a valid operation {}",
+            crate::utils::SUPPORT_MESSAGE
+        )),
         _ => unimplemented!(),
     }
-    
+
     if var_type_of(&rhs) == var_type_of(&lhs) {
-        
         // for non-nested structures
         Box::from(Node::Boolean {
             val: match op {
                 "=" => rhs.val_as_str() == lhs.val_as_str(),
                 "!=" => rhs.val_as_str() != lhs.val_as_str(),
-                _=> unreachable!(),
-            }, 
+                _ => unreachable!(),
+            },
             pos: Position::invalid(),
         })
     } else {
         runtime_err("Type mismatch during equality check".to_string())
     }
-    
 }
 
 fn run_logical_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
     let rhs = stack.pop().expect("Invalid operation");
     let (rhs_val, is_bool) = assert_boolean(&rhs);
     if !is_bool {
-        runtime_err(format!("Logical operation {} can only be performed on BOOLEAN", op))
+        runtime_err(format!(
+            "Logical operation {} can only be performed on BOOLEAN",
+            op
+        ))
     }
 
     Box::from(match op {
-        "!" => Node::Boolean {val: !rhs_val, pos: Position::invalid()},
+        "!" => Node::Boolean {
+            val: !rhs_val,
+            pos: Position::invalid(),
+        },
         _ => {
             let lhs = stack.pop().expect("Invalid operation");
             let (lhs_val, is_bool) = assert_boolean(&lhs);
             if !is_bool {
-                runtime_err(format!("Logical operation {} can only be performed on BOOLEAN", op))
+                runtime_err(format!(
+                    "Logical operation {} can only be performed on BOOLEAN",
+                    op
+                ))
             }
             match op {
-                "&&" => Node::Boolean {val: lhs_val && rhs_val, pos: Position::invalid()},
-                "||" => Node::Boolean {val: lhs_val || rhs_val, pos: Position::invalid()},
+                "&&" => Node::Boolean {
+                    val: lhs_val && rhs_val,
+                    pos: Position::invalid(),
+                },
+                "||" => Node::Boolean {
+                    val: lhs_val || rhs_val,
+                    pos: Position::invalid(),
+                },
                 _ => unreachable!(),
             }
-        },
+        }
     })
 }
 
@@ -172,7 +198,6 @@ fn run_unary_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
             pos: Position::invalid(),
         })
     }
-
 }
 
 fn run_arithmetic_op(stack: &mut Vec<Box<Node>>, op: &str) -> Box<Node> {
@@ -239,13 +264,22 @@ fn assert_boolean(node: &Box<Node>) -> (bool, bool) {
     }
 }
 
-pub fn run_fn_call(executor: &mut Executor, name: &String, call_params: &Vec<Box<Node>>) -> Box<Node> {
+pub fn run_fn_call(
+    executor: &mut Executor,
+    name: &String,
+    call_params: &Vec<Box<Node>>,
+) -> Box<Node> {
     match match_builtin(executor, name, call_params) {
         Some(result) => return result,
         None => {}
     };
-    
-    if let Definition::Function { params, mut children, returns } = executor.get_def(name) {
+
+    if let Definition::Function {
+        params,
+        mut children,
+        returns,
+    } = executor.get_def(name)
+    {
         return run_fn_call_inner(executor, call_params, &params, &mut children, returns);
     }
     runtime_err("Invalid function call".to_string())
@@ -273,9 +307,12 @@ pub fn run_fn_call_inner(
         } else if let Node::Reference(reference) = fn_param.deref() {
             if let Node::Declare { t, children } = reference.deref() {
                 let param_name = &children[0];
-                if let Node::Expression(call_param) = call_param.deref() {    
+                if let Node::Expression(call_param) = call_param.deref() {
                     match call_param[0].deref() {
-                        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
+                        Node::Var { .. }
+                        | Node::ArrayVar { .. }
+                        | Node::Composite { .. }
+                        | Node::Dereference(_) => {}
                         _ => runtime_err("Cannot pass value byref".to_string()),
                     };
                     let node = run_access_mut(executor, &call_param[0]);
@@ -306,7 +343,10 @@ pub fn run_fn_call_inner(
 
 pub fn run_reference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
     match value.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
+        Node::Var { .. }
+        | Node::ArrayVar { .. }
+        | Node::Composite { .. }
+        | Node::Dereference(_) => {}
         _ => runtime_err("Cannot reference value".to_string()),
     };
     let pointer = run_access_mut(executor, value);
@@ -315,12 +355,15 @@ pub fn run_reference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
 
 pub fn run_dereference(executor: &mut Executor, value: &Box<Node>) -> Box<Node> {
     match value.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
+        Node::Var { .. }
+        | Node::ArrayVar { .. }
+        | Node::Composite { .. }
+        | Node::Dereference(_) => {}
         _ => runtime_err("Cannot dereference value".to_string()),
     };
     let pointer = run_access(executor, value);
     if let Node::Pointer(pointer) = pointer.deref() {
-        return pointer.clone_node()
+        return pointer.clone_node();
     }
     runtime_err("Cannot dereference value".to_string());
 }

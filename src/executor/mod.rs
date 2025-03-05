@@ -95,7 +95,7 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             Definition::Record { props, name } => {
                 let base = Box::new(Node::Null);
                 return Box::new(Node::Object { props, base, name });
-            },
+            }
             Definition::Enum { name } => {
                 return Box::from(Node::NullObject(VariableType::Custom((name))))
             }
@@ -108,7 +108,11 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
     })
 }
 
-pub fn def_base_class(props: HashMap<String, Property>, base: Box<Definition>, name: String) -> Node {
+pub fn def_base_class(
+    props: HashMap<String, Property>,
+    base: Box<Definition>,
+    name: String,
+) -> Node {
     let base = Box::new(match base.deref().clone() {
         Definition::Class { props, base, name } => def_base_class(props, base, name),
         _ => Node::Null,

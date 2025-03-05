@@ -1,5 +1,5 @@
-use chrono::{NaiveDate};
-use crate::enums::{VariableType};
+use crate::enums::VariableType;
+use chrono::NaiveDate;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TToken {
@@ -23,15 +23,15 @@ pub enum TToken {
 
     // Primitive Type
     VarType(VariableType),
-    
+
     // Operators and comparators
     Operator(String),
-    
+
     // Append, write, read, random
     FileMode(String),
-    
+
     PassBy(String),
-    
+
     Array,
     Call,
     Case,
@@ -77,12 +77,10 @@ pub enum TToken {
     While,
     WriteFile,
     Newline,
-    
-    Identifier(String),
-    
-    EOF,
-    
-    Unknown
-    
-}
 
+    Identifier(String),
+
+    EOF,
+
+    Unknown,
+}

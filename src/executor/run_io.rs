@@ -28,7 +28,10 @@ pub fn run_output(executor: &mut Executor, exprs: &Vec<Box<Node>>) {
 
 pub fn run_input(executor: &mut Executor, child: &Box<Node>) {
     match child.deref() {
-        Node::Var { .. } | Node::ArrayVar { .. } | Node::Composite { .. } | Node::Dereference(_) => {}
+        Node::Var { .. }
+        | Node::ArrayVar { .. }
+        | Node::Composite { .. }
+        | Node::Dereference(_) => {}
         _ => runtime_err("Invalid input statement".to_string()),
     };
     let node = run_access_mut(executor, child);

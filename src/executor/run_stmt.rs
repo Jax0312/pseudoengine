@@ -59,7 +59,11 @@ pub fn run_stmt(executor: &mut Executor, node: &Box<Node>) -> Option<Box<Node>> 
         Node::GetRecord { filename, var } => run_get_record(executor, filename, var),
         Node::SeekFile { filename, expr } => run_seek(executor, filename, expr),
         Node::CloseFile(filename) => run_close_file(executor, filename),
-        Node::If { .. } | Node::While { .. } | Node::For { .. } | Node::Switch { .. } | Node::Return(_) => {
+        Node::If { .. }
+        | Node::While { .. }
+        | Node::For { .. }
+        | Node::Switch { .. }
+        | Node::Return(_) => {
             if let Some(expr) = run_control_flow(executor, node) {
                 return Some(expr);
             }
@@ -128,10 +132,7 @@ fn run_const(executor: &mut Executor, identifier: &String, val: &Box<Node>) {
 }
 
 fn run_enum(executor: &mut Executor, name: &String, variants: &[Box<Node>]) {
-    executor.declare_def(
-        name,
-        Definition::Enum { name: name.clone() },
-    );
+    executor.declare_def(name, Definition::Enum { name: name.clone() });
 
     for variant in variants {
         if let Node::String { val, .. } = variant.deref() {

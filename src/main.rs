@@ -58,9 +58,7 @@ fn main() {
 
     if let Some(command) = cli.subcommand_name() {
         if let Some(args) = cli.subcommand_matches(command) {
-            let file: &String = args
-                .get_one("file")
-                .expect("File name not provided");
+            let file: &String = args.get_one("file").expect("File name not provided");
             match command {
                 "run" => execute(file),
                 _ => unreachable!(),

@@ -81,9 +81,7 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
                                     pos,
                                 });
                             }
-                            _ => {
-                                err("Multiple decimal points are not allowed", &pos)
-                            }
+                            _ => err("Multiple decimal points are not allowed", &pos),
                         }
                         c_pos += temp.len();
                         tokens.push(Token {

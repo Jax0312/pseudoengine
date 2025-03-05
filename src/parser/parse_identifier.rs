@@ -45,8 +45,12 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                         // Skip '('
                         lexer.next();
                         let mut params = Vec::new();
-                        
-                        if let Some(Token {t: TToken::RParen, pos: _}) = lexer.peek() {
+
+                        if let Some(Token {
+                            t: TToken::RParen,
+                            pos: _,
+                        }) = lexer.peek()
+                        {
                             // No need to parse expr
                             lexer.next();
                         } else {
@@ -57,9 +61,9 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                                 if res.t == TToken::RParen {
                                     break;
                                 }
-                            }                            
+                            }
                         }
-                        
+
                         vars.push(Box::from(Node::FunctionCall { name, params }))
                     }
                     _ => {
@@ -84,7 +88,7 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Box<Node> {
                     vars.push(temp);
                     lexer.next();
                 }
-                
+
                 // repeat if period is found
                 match lexer.peek() {
                     Some(&Token {
