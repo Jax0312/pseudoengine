@@ -1,6 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
 use crate::{executor::Property, tokens::TToken};
 use chrono::NaiveDate;
+use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -31,16 +31,28 @@ pub struct Array {
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Position {
-    pub line: usize,
-    pub col: usize,
+    pub line_start: usize,
+    pub line_end: usize,
+    pub pos_start: usize,
+    pub pos_end: usize,
 }
 
 impl Position {
-    pub fn invalid() -> Position {
+    pub fn new(line_start: usize, line_end: usize, pos_start: usize, pos_end: usize) -> Position {
         Position {
-            line: usize::MAX,
-            col: usize::MAX,
+            line_start,
+            line_end,
+            pos_start,
+            pos_end,
         }
+    }
+
+    pub fn from(line: usize, pos: usize, len: usize) -> Position {
+        Position::new(line, line, pos, pos + len)
+    }
+
+    pub fn invalid() -> Position {
+        Position::new(0, 0, 0, 0)
     }
 }
 
