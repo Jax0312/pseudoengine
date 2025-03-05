@@ -45,11 +45,10 @@ mod tests {
     fn builtin_func_test() {
         execute("tests/builtin_func_test.txt");
     }
-    // TODO: Uncomment the test when you're done @JinWei
-    // #[test]
-    // fn func_test() {
-    //     execute("tests/func_test.txt");
-    // }
+    #[test]
+    fn func_test() {
+        execute("tests/func_test.txt");
+    }
     #[test]
     fn file_test() {
         execute("tests/file_test.txt");
