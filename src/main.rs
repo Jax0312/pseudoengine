@@ -4,14 +4,14 @@ use std::fmt::format;
 use std::rc::Rc;
 use std::{env, fs::read_to_string, io::Read};
 
+use clap::{Arg, Command};
+
 mod enums;
 mod executor;
 mod lexer;
 mod parser;
 mod tokens;
 mod utils;
-
-const DEBUG_FILEPATH: &str = "tests/classes_test.txt";
 
 #[derive(Clone)]
 struct SourceFile {
@@ -28,32 +28,54 @@ impl SourceFile {
     }
 }
 
+const HEADER: &str = r#"
+██████╗ ███████╗███████╗██╗   ██╗██████╗  ██████╗ ███████╗███╗   ██╗ ██████╗ ██╗███╗   ██╗███████╗
+██╔══██╗██╔════╝██╔════╝██║   ██║██╔══██╗██╔═══██╗██╔════╝████╗  ██║██╔════╝ ██║████╗  ██║██╔════╝
+██████╔╝███████╗█████╗  ██║   ██║██║  ██║██║   ██║█████╗  ██╔██╗ ██║██║  ███╗██║██╔██╗ ██║█████╗  
+██╔═══╝ ╚════██║██╔══╝  ██║   ██║██║  ██║██║   ██║██╔══╝  ██║╚██╗██║██║   ██║██║██║╚██╗██║██╔══╝  
+██║     ███████║███████╗╚██████╔╝██████╔╝╚██████╔╝███████╗██║ ╚████║╚██████╔╝██║██║ ╚████║███████╗
+╚═╝     ╚══════╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚══════╝
+
+An interpreter for the A-Level pseudocode syntax.
+Created by Jaxon Moh & Jin Wei Tan."#;
+
 thread_local! {
     pub static SOURCE_FILE: Rc<RefCell<SourceFile>> = Rc::new(RefCell::new(SourceFile::new()));
 }
 
 fn main() {
-    // Read input
-    println!(
-        "The current directory is {}",
-        env::current_dir().unwrap().display()
-    );
-    let filepath = if cfg!(debug_assertions) {
-        DEBUG_FILEPATH
-    } else {
-        let args: Vec<String> = env::args().collect();
-        &*match args.get(1) {
-            Some(arg) => arg.clone(),
-            None => panic!("Missing filepath argument"),
+    let cli = Command::new("pseudoengine")
+        .about(HEADER)
+        .version("0.0.1")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .subcommand(
+            Command::new("run")
+                .about("Run the program.")
+                .arg(Arg::new("file").help("Filepath of the program")),
+        )
+        .get_matches();
+
+    if let Some(command) = cli.subcommand_name() {
+        if let Some(args) = cli.subcommand_matches(command) {
+            let file: &String = args
+                .get_one("file")
+                .expect("File name not provided");
+            match command {
+                "run" => execute(file),
+                _ => unreachable!(),
+            };
         }
-    };
-    execute(filepath);
+    }
 }
 
 fn execute(filepath: &str) {
-    println!("Executing {}", filepath);
     let mut buf = read_to_string(filepath).expect(format!("File {} not found", filepath).as_str());
-    let lines = buf.clone().lines().map(|line| line.to_string()).collect::<Vec<String>>();
+    let lines = buf
+        .clone()
+        .lines()
+        .map(|line| line.to_string())
+        .collect::<Vec<String>>();
     SOURCE_FILE.with(|file| {
         file.replace(SourceFile {
             name: filepath.to_string(),
@@ -67,6 +89,7 @@ fn execute(filepath: &str) {
     let ast = parser::parse_file(&mut lex);
     executor::run(ast);
 }
+
 #[cfg(test)]
 mod tests {
     use crate::execute;
