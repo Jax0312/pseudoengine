@@ -68,6 +68,9 @@ pub fn run_input(executor: &mut Executor, child: &Box<Node>, pos: &Position) {
             val: temp.to_lowercase() == "TRUE",
             pos: Position::invalid(),
         }),
-        _ => err(format!("Input type {} is not allowed", var_type.str()).as_str(), &child.pos()),
+        _ => err(
+            format!("Input type {} is not allowed", var_type.str()).as_str(),
+            &child.pos(),
+        ),
     };
 }

@@ -132,7 +132,10 @@ fn run_function(
     for param in params {
         if let Node::Var { name, .. } = param.deref() {
             if names.contains(name) {
-                err(format!("Duplicate parameter {}", name).as_str(), &param.pos());
+                err(
+                    format!("Duplicate parameter {}", name).as_str(),
+                    &param.pos(),
+                );
             }
             names.push(name.clone());
         }
@@ -342,7 +345,7 @@ fn run_for(
                     }),
                     &Box::new(VariableType::Integer),
                     true,
-                    pos
+                    pos,
                 );
             }
             while start <= end {

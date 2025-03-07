@@ -95,7 +95,7 @@ pub fn parse_case(lexer: &mut Lexer) -> Box<Node> {
                 }
                 expect_token(lexer, &[TToken::Colon], "':'");
                 loop {
-                    if try_parse_literal(lexer).is_some()  {
+                    if try_parse_literal(lexer).is_some() {
                         break;
                     }
                     match lexer.peek().unwrap().t {

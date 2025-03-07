@@ -138,7 +138,7 @@ fn is_unary(op: &Token) -> bool {
 
 fn get_op(op: &Token) -> String {
     if let TToken::Operator(op) = &op.t {
-        return op.clone()
+        return op.clone();
     }
     unreachable!()
 }

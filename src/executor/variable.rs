@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::rc::Rc;
 
-use crate::{enums::{Node, NodeRef, Position, VariableType}, utils::err};
+use crate::{
+    enums::{Node, NodeRef, Position, VariableType},
+    utils::err,
+};
 
 pub struct Executor {
     pub scopes: Vec<Scope>,
@@ -123,7 +126,10 @@ impl Executor {
                         },
                     );
                 } else {
-                    err(format!("'{}' is already initialized", identifier).as_str(), pos)
+                    err(
+                        format!("'{}' is already initialized", identifier).as_str(),
+                        pos,
+                    )
                 }
             }
         }
@@ -164,10 +170,14 @@ impl Executor {
                         if var.mutable {
                             return var;
                         } else {
-                            err(format!(
-                                "'{}' is a constant, it's value cannot be modified",
-                                identifier
-                            ).as_str(), pos)
+                            err(
+                                format!(
+                                    "'{}' is a constant, it's value cannot be modified",
+                                    identifier
+                                )
+                                .as_str(),
+                                pos,
+                            )
                         }
                     }
                 }
@@ -184,7 +194,10 @@ impl Executor {
                 if !state.defs.contains_key(identifier) {
                     state.defs.insert(identifier.clone(), def.clone());
                 } else {
-                    err(format!("'{}' is already declared", identifier).as_str(), pos)
+                    err(
+                        format!("'{}' is already declared", identifier).as_str(),
+                        pos,
+                    )
                 }
             }
         }

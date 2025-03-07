@@ -75,7 +75,7 @@ pub fn parse_function(lexer: &mut Lexer, private: bool) -> Box<Node> {
         return_type,
         children,
         pos,
-        private
+        private,
     })
 }
 
@@ -130,7 +130,7 @@ pub fn parse_procedure(lexer: &mut Lexer, private: bool) -> Box<Node> {
         params,
         children,
         pos,
-        private
+        private,
     })
 }
 

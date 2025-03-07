@@ -94,6 +94,6 @@ pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
         }),
         base,
         children,
-        pos
+        pos,
     })
 }

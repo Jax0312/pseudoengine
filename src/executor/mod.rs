@@ -48,7 +48,7 @@ pub fn var_type_of(node: &Box<Node>) -> VariableType {
         }
         Node::RefVar(value) => var_type_of(value.borrow().deref()),
         Node::Object { name, .. } => VariableType::Custom(name.clone()),
-        Node::Array { t, shape, .. } => VariableType::Array{ shape, t },
+        Node::Array { t, shape, .. } => VariableType::Array { shape, t },
         Node::NullObject(var_type) => var_type.clone(),
         _ => unimplemented!("{:?}", node),
     }
@@ -76,17 +76,14 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>, pos: &Positio
             val: NaiveDate::default(),
             pos: Position::invalid(),
         },
-        VariableType::Array{ shape, t } => {
+        VariableType::Array { shape, t } => {
             let mut capacity = 1;
             for index in shape {
                 // index bounds are inclusive
                 capacity = capacity * (index.upper - index.lower + 1);
             }
             Node::Array {
-                values: vec![
-                    NodeRef::new_ref(default_var(executor, &t, pos));
-                    capacity as usize
-                ],
+                values: vec![NodeRef::new_ref(default_var(executor, &t, pos)); capacity as usize],
                 shape: shape.clone(),
                 t: t.clone(),
             }

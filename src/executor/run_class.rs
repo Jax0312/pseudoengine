@@ -81,7 +81,7 @@ pub fn run_record(executor: &mut Executor, name: &Box<Node>, children: &Vec<Box<
                 props,
             },
             pos,
-        )
+        );
     }
     unreachable!()
 }
