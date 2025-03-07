@@ -23,18 +23,15 @@ jobs:
       - name: Build release binary
         run: cargo build --release
 
-      - name: Rename and zip binary
+      - name: Rename binary for upload
         run: |
           mkdir -p artifacts
           if [[ "$RUNNER_OS" == "Linux" ]]; then
-            mv target/release/pseudoengine artifacts/pseudoengine
-            cd artifacts && zip pseudoengine-linux.zip pseudoengine
+            mv target/release/pseudoengine artifacts/pseudoengine-linux
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            mv target/release/pseudoengine artifacts/pseudoengine
-            cd artifacts && zip pseudoengine-macos.zip pseudoengine
+            mv target/release/pseudoengine artifacts/pseudoengine-macos
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            mv target/release/pseudoengine.exe artifacts/pseudoengine.exe
-            cd artifacts && powershell Compress-Archive -Path pseudoengine.exe -DestinationPath pseudoengine-windows.zip
+            mv target/release/pseudoengine.exe artifacts/pseudoengine-windows.exe
           fi
         shell: bash
 
