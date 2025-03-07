@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::rc::Rc;
 
-use crate::enums::{Node, NodeRef, VariableType};
-use crate::executor::runtime_err;
+use crate::{enums::{Node, NodeRef, Position, VariableType}, utils::err};
 
 pub struct Executor {
     pub scopes: Vec<Scope>,
@@ -109,6 +108,7 @@ impl Executor {
         value: Box<Node>,
         t: &Box<VariableType>,
         mutable: bool,
+        pos: &Position,
     ) {
         let scope = self.scopes.last_mut().unwrap();
         match scope {
@@ -123,7 +123,7 @@ impl Executor {
                         },
                     );
                 } else {
-                    runtime_err(format!("{} is already initialized", identifier))
+                    err(format!("'{}' is already initialized", identifier).as_str(), pos)
                 }
             }
         }
@@ -132,14 +132,7 @@ impl Executor {
     pub fn var_exist(&self, identifier: &String) -> bool {
         for scope in self.scopes.iter().rev() {
             match scope {
-                Scope::Global(state) => {
-                    if let Some(_) = state.variables.get(identifier) {
-                        return true;
-                    } else {
-                        break;
-                    }
-                }
-                Scope::Local(state) => {
+                Scope::Global(state) | Scope::Local(state) => {
                     if let Some(_) = state.variables.get(identifier) {
                         return true;
                     }
@@ -149,17 +142,10 @@ impl Executor {
         false
     }
 
-    pub fn get_var(&self, identifier: &String) -> &Variable {
+    pub fn get_var(&self, identifier: &String, pos: &Position) -> &Variable {
         for scope in self.scopes.iter().rev() {
             match scope {
-                Scope::Global(state) => {
-                    if let Some(var) = state.variables.get(identifier) {
-                        return var;
-                    } else {
-                        break;
-                    }
-                }
-                Scope::Local(state) => {
+                Scope::Global(state) | Scope::Local(state) => {
                     if let Some(var) = state.variables.get(identifier) {
                         return var;
                     }
@@ -167,58 +153,44 @@ impl Executor {
             }
         }
 
-        runtime_err(format!("{} is not declared", identifier))
+        err(format!("'{}' is not declared", identifier).as_str(), pos)
     }
 
-    pub fn get_var_mut(&mut self, identifier: &String) -> &mut Variable {
+    pub fn get_var_mut(&mut self, identifier: &String, pos: &Position) -> &mut Variable {
         for scope in self.scopes.iter_mut().rev() {
             match scope {
-                Scope::Global(state) => {
+                Scope::Global(state) | Scope::Local(state) => {
                     if let Some(var) = state.variables.get_mut(identifier) {
                         if var.mutable {
                             return var;
                         } else {
-                            runtime_err(format!(
-                                "{} is a constant, it's value cannot be modified",
+                            err(format!(
+                                "'{}' is a constant, it's value cannot be modified",
                                 identifier
-                            ))
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                Scope::Local(state) => {
-                    if let Some(var) = state.variables.get_mut(identifier) {
-                        if var.mutable {
-                            return var;
-                        } else {
-                            runtime_err(format!(
-                                "{} is a constant, it's value cannot be modified",
-                                identifier
-                            ))
+                            ).as_str(), pos)
                         }
                     }
                 }
             }
         }
 
-        runtime_err(format!("{} is not declared", identifier))
+        err(format!("'{}' is not declared", identifier).as_str(), pos)
     }
 
-    pub fn declare_def(&mut self, identifier: &String, def: Definition) {
+    pub fn declare_def(&mut self, identifier: &String, def: Definition, pos: &Position) {
         let scope = self.scopes.last_mut().unwrap();
         match scope {
             Scope::Global(ref mut state) | Scope::Local(ref mut state) => {
                 if !state.defs.contains_key(identifier) {
                     state.defs.insert(identifier.clone(), def.clone());
                 } else {
-                    runtime_err(format!("{} is already declared", identifier))
+                    err(format!("'{}' is already declared", identifier).as_str(), pos)
                 }
             }
         }
     }
 
-    pub fn get_def(&mut self, identifier: &String) -> Definition {
+    pub fn get_def(&mut self, identifier: &String, pos: &Position) -> Definition {
         for scope in self.scopes.iter().rev() {
             match scope {
                 Scope::Global(state) | Scope::Local(state) => {
@@ -228,7 +200,7 @@ impl Executor {
                 }
             }
         }
-        runtime_err(format!("{} is not declared", identifier))
+        err(format!("'{}' is not declared", identifier).as_str(), pos)
     }
 }
 

@@ -1,19 +1,16 @@
-use crate::enums::{Array, Node, Position, Token, VariableType};
+use crate::enums::{Array, Index, Node, Position, Token, VariableType};
 use crate::lexer::Lexer;
 use crate::tokens::TToken;
 use crate::utils::{err, expect_token};
 
 pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
     // Skip Type token
-    lexer.next();
-    let name;
-    if let TToken::Identifier(_name) =
-        expect_token(lexer, &[TToken::Identifier("".to_string())], "Identifier").t
-    {
-        name = _name;
-    } else {
-        unreachable!()
-    }
+    let token = lexer.next().unwrap();
+    let name_token = expect_token(lexer, &[TToken::Identifier("".to_string())], "Identifier");
+    let name = match name_token.t {
+        TToken::Identifier(name) => name,
+        _ => unreachable!(),
+    };
     // clear newline
     let next_token = expect_token(
         lexer,
@@ -25,21 +22,27 @@ pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
             // This is a record data type pattern
             expect_token(lexer, &[TToken::Declare], "DECLARE");
             let mut fields = Vec::new();
-            loop {
-                fields.push(parse_declaration(lexer));
+            let end = loop {
+                fields.push(parse_declaration(lexer, false, false));
                 // parse_declaration does not consume the trailing newline token
                 if lexer.peek().unwrap().t == TToken::Newline {
                     lexer.next();
                 }
-                match expect_token(lexer, &[TToken::Declare, TToken::EndType], "EndType").t {
-                    TToken::EndType => break,
+                let end = expect_token(lexer, &[TToken::Declare, TToken::EndType], "EndType");
+                match end.t {
+                    TToken::EndType => break end.pos,
                     TToken::Declare => continue,
                     _ => unreachable!(),
                 }
-            }
+            };
+            let pos = Position::range(token.pos, end);
             Box::from(Node::Record {
-                name,
+                name: Box::new(Node::String {
+                    val: name,
+                    pos: name_token.pos,
+                }),
                 children: fields,
+                pos,
             })
         }
         TToken::Operator(op) => {
@@ -47,8 +50,8 @@ pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
                 err("Expected '='", &next_token.pos)
             }
             match expect_token(lexer, &[TToken::LParen, TToken::Caret], "'(' or '^'").t {
-                TToken::LParen => parse_enum(lexer, name),
-                TToken::Caret => parse_pointer(lexer, &name),
+                TToken::LParen => parse_enum(lexer, token, name),
+                TToken::Caret => parse_pointer(lexer, token, &name),
                 _ => unreachable!(),
             }
         }
@@ -56,30 +59,29 @@ pub fn parse_user_defined_data(lexer: &mut Lexer) -> Box<Node> {
     }
 }
 
-fn parse_pointer(lexer: &mut Lexer, name: &String) -> Box<Node> {
-    let ref_to = Box::from(
-        match expect_token(
-            lexer,
-            &[
-                TToken::Identifier("".to_string()),
-                TToken::VarType(VariableType::String),
-            ],
-            "Data type",
-        )
-        .t
-        {
-            TToken::Identifier(name) => VariableType::Custom(name),
-            TToken::VarType(vt) => vt,
-            _ => unreachable!(),
-        },
+fn parse_pointer(lexer: &mut Lexer, start: Token, name: &String) -> Box<Node> {
+    let vtype = expect_token(
+        lexer,
+        &[
+            TToken::Identifier("".to_string()),
+            TToken::VarType(VariableType::String),
+        ],
+        "Data type",
     );
-    Box::from(Node::RefType {
+    let ref_to = Box::from(match vtype.t {
+        TToken::Identifier(name) => VariableType::Custom(name),
+        TToken::VarType(vt) => vt,
+        _ => unreachable!(),
+    });
+    let pos = Position::range(start.pos, vtype.pos);
+    Box::from(Node::PointerDef {
         name: name.clone(),
         ref_to,
+        pos,
     })
 }
 
-fn parse_enum(lexer: &mut Lexer, name: String) -> Box<Node> {
+fn parse_enum(lexer: &mut Lexer, start: Token, name: String) -> Box<Node> {
     let mut expect_ident = false;
     let mut variants = Vec::<String>::new();
     let mut current;
@@ -112,6 +114,7 @@ fn parse_enum(lexer: &mut Lexer, name: String) -> Box<Node> {
     } else if current.t != TToken::RParen {
         err(") expected", &current.pos);
     }
+    let pos = Position::range(start.pos, current.pos);
     Box::from(Node::Enum {
         name,
         variants: variants
@@ -123,6 +126,7 @@ fn parse_enum(lexer: &mut Lexer, name: String) -> Box<Node> {
                 })
             })
             .collect(),
+        pos,
     })
 }
 
@@ -183,12 +187,18 @@ pub fn parse_constant(lexer: &mut Lexer) -> Box<Node> {
 
 pub fn parse_declare(lexer: &mut Lexer) -> Box<Node> {
     // Skip Declare token
-    lexer.next();
-    parse_declaration(lexer)
+    let token = lexer.next().unwrap();
+    let mut node = parse_declaration(lexer, false, false);
+    let new_pos = Position::range(token.pos, node.pos());
+    if let Node::Declare { pos, .. } = &mut *node {
+        *pos = new_pos;
+    }
+    node
 }
 
 // Actual parsing of declaration content
-pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
+pub fn parse_declaration(lexer: &mut Lexer, byref: bool, private: bool) -> Box<Node> {
+    let mut start = Position::invalid();
     let mut expect_ident = false;
     let mut vars = Vec::<String>::new();
     let mut current;
@@ -200,8 +210,11 @@ pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
         match current.clone().unwrap() {
             Token {
                 t: TToken::Identifier(ident),
-                pos: _,
+                pos,
             } => {
+                if start == Position::invalid() {
+                    start = pos;
+                }
                 vars.push(ident);
                 expect_ident = false;
             }
@@ -226,30 +239,22 @@ pub fn parse_declaration(lexer: &mut Lexer) -> Box<Node> {
     }
 
     // Handle variable type
-    match lexer.next().unwrap() {
-        Token {
-            t: TToken::VarType(vt),
-            pos: _,
-        } => Box::new(Node::Declare {
-            t: Box::from(vt),
-            children: vars,
-        }),
-        Token {
-            t: TToken::Array,
-            pos: _,
-        } => Box::new(Node::Declare {
-            t: parse_array(lexer),
-            children: vars,
-        }),
-        Token {
-            t: TToken::Identifier(name),
-            pos: _,
-        } => Box::new(Node::Declare {
-            t: Box::from(VariableType::Custom(name)),
-            children: vars,
-        }),
-        Token { t: _, pos } => err("Type expected", &pos),
-    }
+    let vtype = lexer.next().unwrap();
+    let t = match vtype.t {
+        TToken::VarType(vt) => Box::from(vt),
+        TToken::Array => parse_array(lexer),
+        TToken::Identifier(name) => Box::from(VariableType::Custom(name)),
+        _ => err("Type expected", &vtype.pos),
+    };
+
+    let pos = Position::range(start, vtype.pos);
+    Box::new(Node::Declare {
+        t,
+        byref,
+        private,
+        children: vars,
+        pos,
+    })
 }
 
 pub fn parse_array(lexer: &mut Lexer) -> Box<VariableType> {
@@ -259,52 +264,35 @@ pub fn parse_array(lexer: &mut Lexer) -> Box<VariableType> {
 }
 
 fn parse_array_dimension(lexer: &mut Lexer) -> Box<VariableType> {
-    // The function calls itself recursively to create a nested array structure
-
-    let mut v = Box::new(Array {
-        t: Box::from(VariableType::Integer),
-        lower: 0,
-        upper: 0,
-    });
-
-    if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").t {
-        v.lower = val
-    }
-
-    expect_token(lexer, &[TToken::Colon], ":");
-
-    if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").t {
-        v.upper = val
-    }
-
-    match lexer.next().unwrap() {
-        Token {
-            t: TToken::Comma,
-            pos: _,
-        } => Box::from(VariableType::Array(Box::from(Array {
-            t: parse_array_dimension(lexer),
-            lower: v.lower,
-            upper: v.upper,
-        }))),
-        Token {
-            t: TToken::RSqrBracket,
-            pos,
-        } => {
-            expect_token(lexer, &[TToken::Of], "'Of'");
-            if let Some(Token {
-                t: TToken::VarType(vt),
-                pos: _,
-            }) = lexer.next()
-            {
-                Box::from(VariableType::Array(Box::from(Array {
-                    t: Box::from(vt),
-                    lower: v.lower,
-                    upper: v.upper,
-                })))
-            } else {
-                err("Type expected", &pos);
-            }
+    let mut shape = Vec::new();
+    loop {
+        let mut index = Index { lower: 0, upper: 0 };
+        if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").t
+        {
+            index.lower = val
         }
-        Token { t: _, pos } => err(" ']' or ',' expected", &pos),
+        expect_token(lexer, &[TToken::Colon], ":");
+        if let TToken::IntegerLit(val) = expect_token(lexer, &[TToken::IntegerLit(0)], "Integer").t
+        {
+            index.upper = val
+        }
+        shape.push(index);
+
+        let token = lexer.next().unwrap();
+        match token.t {
+            TToken::Comma => {}
+            TToken::RSqrBracket => break,
+            _ => err(" ']' or ',' expected", &token.pos),
+        }
+    }
+    expect_token(lexer, &[TToken::Of], "'Of'");
+    let token = lexer.next().unwrap();
+    if let TToken::VarType(t) = token.t {
+        Box::from(VariableType::Array {
+            shape,
+            t: Box::new(t),
+        })
+    } else {
+        err("Type expected", &token.pos);
     }
 }

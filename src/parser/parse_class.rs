@@ -1,4 +1,4 @@
-use crate::enums::{Node, Token};
+use crate::enums::{Node, Position, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_declare::parse_declaration;
 use crate::parser::parse_func::{parse_function, parse_procedure};
@@ -8,7 +8,7 @@ use crate::utils::{err, expect_token};
 
 pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
     // skip CLASS token
-    lexer.next();
+    let token = lexer.next().unwrap();
     let Token {
         t: TToken::Identifier(name),
         pos: ident_pos,
@@ -35,7 +35,7 @@ pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
         base = Box::from(Node::String { val, pos })
     }
 
-    loop {
+    let end = loop {
         match lexer.peek() {
             Some(Token {
                 t: TToken::EOF,
@@ -43,10 +43,11 @@ pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
             }) => err("ENDCLASS expected", &pos),
             Some(Token {
                 t: TToken::EndClass,
-                pos: _,
+                pos,
             }) => {
+                let pos = pos.clone();
                 lexer.next();
-                break;
+                break pos;
             }
             Some(Token {
                 t: TToken::Private,
@@ -57,12 +58,12 @@ pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
                     Some(Token {
                         t: TToken::Procedure,
                         ..
-                    }) => Box::from(Node::Private(parse_procedure(lexer))),
+                    }) => Box::from(parse_procedure(lexer, true)),
                     Some(Token {
                         t: TToken::Function,
                         ..
-                    }) => Box::from(Node::Private(parse_function(lexer))),
-                    _ => Box::from(Node::Private(parse_declaration(lexer))),
+                    }) => Box::from(parse_function(lexer, true)),
+                    _ => Box::from(parse_declaration(lexer, false, true)),
                 });
             }
             Some(Token {
@@ -74,18 +75,18 @@ pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
                     Some(Token {
                         t: TToken::Procedure,
                         ..
-                    }) => parse_procedure(lexer),
+                    }) => parse_procedure(lexer, false),
                     Some(Token {
                         t: TToken::Function,
                         ..
-                    }) => parse_function(lexer),
-                    _ => parse_declaration(lexer),
+                    }) => parse_function(lexer, false),
+                    _ => parse_declaration(lexer, false, false),
                 });
             }
             _ => children.push(parse_line(lexer)),
         }
-    }
-
+    };
+    let pos = Position::range(token.pos, end);
     Box::from(Node::Class {
         name: Box::from(Node::String {
             val: name,
@@ -93,5 +94,6 @@ pub fn parse_class(lexer: &mut Lexer) -> Box<Node> {
         }),
         base,
         children,
+        pos
     })
 }

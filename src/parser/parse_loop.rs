@@ -1,4 +1,4 @@
-use crate::enums::{Node, Token};
+use crate::enums::{Node, Position, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_line;
@@ -7,12 +7,12 @@ use crate::utils::{err, expect_token};
 
 pub fn parse_while(lexer: &mut Lexer) -> Box<Node> {
     // Skip while token
-    lexer.next();
+    let token = lexer.next().unwrap();
 
     let mut body = Vec::new();
-    let cond = parse_expression(lexer, &[]).0;
+    let cond = parse_expression(lexer);
 
-    loop {
+    let end = loop {
         match lexer.peek() {
             Some(Token {
                 t: TToken::EOF,
@@ -20,20 +20,22 @@ pub fn parse_while(lexer: &mut Lexer) -> Box<Node> {
             }) => err("'ENDWHILE' expected", pos),
             Some(Token {
                 t: TToken::EndWhile,
-                pos: _,
+                pos,
             }) => {
+                let pos = pos.clone();
                 lexer.next();
-                break;
+                break pos;
             }
             _ => body.push(parse_line(lexer)),
         }
-    }
-    Box::from(Node::While { cond, body })
+    };
+    let pos = Position::range(token.pos, end);
+    Box::from(Node::While { cond, body, pos })
 }
 
 pub fn parse_repeat(lexer: &mut Lexer) -> Box<Node> {
     // skip REPEAT token
-    lexer.next();
+    let token = lexer.next().unwrap();
 
     let mut body = vec![];
     loop {
@@ -44,7 +46,7 @@ pub fn parse_repeat(lexer: &mut Lexer) -> Box<Node> {
             }) => err("'UNTIL' expected", pos),
             Some(Token {
                 t: TToken::Until,
-                pos: _,
+                pos,
             }) => {
                 lexer.next();
                 break;
@@ -53,14 +55,14 @@ pub fn parse_repeat(lexer: &mut Lexer) -> Box<Node> {
         }
     }
 
-    let cond = parse_expression(lexer, &[]).0;
-
-    Box::from(Node::Repeat { cond, body })
+    let cond = parse_expression(lexer);
+    let pos = Position::range(token.pos, cond.pos());
+    Box::from(Node::Repeat { cond, body, pos })
 }
 
 pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     // skip for token
-    lexer.next();
+    let token = lexer.next().unwrap();
     let iter;
 
     if let Token {
@@ -72,15 +74,17 @@ pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     } else {
         unreachable!()
     }
-    expect_token(lexer, &[TToken::Assignment], "<- expected");
+    expect_token(lexer, &[TToken::Assignment], "<-");
 
-    let start = parse_expression(lexer, &[TToken::To]).0;
-    let (end, end_token) = parse_expression(lexer, &[TToken::Step]);
+    let start = parse_expression(lexer);
+    expect_token(lexer, &[TToken::To], "'TO'");
+    let end = parse_expression(lexer);
 
     let mut body = Vec::new();
     let step;
-    if end_token.t == TToken::Step {
-        step = parse_expression(lexer, &[]).0;
+    if lexer.peek().unwrap().t == TToken::Step {
+        lexer.next();
+        step = parse_expression(lexer);
     } else {
         step = Box::from(Node::Null)
     }
@@ -103,10 +107,11 @@ pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
     }
 
     // Check for optional appearance of iter variable
-    if let Some(Token {
+    let ident = lexer.peek().unwrap().clone();
+    if let Token {
         t: TToken::Identifier(name),
         pos,
-    }) = lexer.peek()
+    } = ident
     {
         match *iter {
             Node::Var {
@@ -114,18 +119,24 @@ pub fn parse_for(lexer: &mut Lexer) -> Box<Node> {
             } => {
                 // Identifier must match the earlier specified one
                 if *name != *_name {
-                    err(format!("Identifier must be '{}' ", _name).as_str(), pos);
+                    err(format!("Identifier must be '{}' ", _name).as_str(), &pos);
                 }
                 lexer.next();
             }
             _ => unreachable!(),
         }
-    }
+    } else {
+        err("Identifier expected", &ident.pos)
+    };
+    let pos = Position::range(start.pos(), end.pos());
+    let range = Box::new(Node::Range { start, end, pos });
 
+    let pos = Position::range(token.pos, ident.pos);
     Box::from(Node::For {
         iter,
-        range: Box::new(Node::Range { start, end }),
+        range,
         step,
         body,
+        pos,
     })
 }

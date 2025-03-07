@@ -21,7 +21,7 @@ pub fn expect_token(lexer: &mut Lexer, tokens: &[TToken], message: &str) -> Toke
             }
         }
         err(
-            &format!("{} expected. {:?} found", message, next),
+            &format!("{} expected. {:?} found", message, next.t),
             &next.pos,
         );
     }
@@ -32,7 +32,7 @@ pub fn expect_token(lexer: &mut Lexer, tokens: &[TToken], message: &str) -> Toke
 // Parser error function, contains position metadata
 pub fn err(message: &str, pos: &Position) -> ! {
     let source = SOURCE_FILE.with(|file| file.borrow().deref().clone());
-    let mut lines = source.file[pos.line_start - 1].clone();
+    let mut lines = source.file[pos.line_start - 1].clone() + "  ";
     let mut start = pos.pos_start;
     let mut end = pos.pos_end;
     if pos.line_start != pos.line_end {

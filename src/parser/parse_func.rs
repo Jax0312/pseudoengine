@@ -1,4 +1,4 @@
-use crate::enums::{Node, Token, VariableType};
+use crate::enums::{Node, Position, Token, VariableType};
 use crate::lexer::Lexer;
 use crate::parser::parse_declare::{parse_array, parse_declaration};
 use crate::parser::parse_expr::parse_expression;
@@ -6,9 +6,9 @@ use crate::parser::parse_line;
 use crate::tokens::TToken;
 use crate::utils::{err, expect_token};
 
-pub fn parse_function(lexer: &mut Lexer) -> Box<Node> {
+pub fn parse_function(lexer: &mut Lexer, private: bool) -> Box<Node> {
     // skip FUNCTION token
-    lexer.next();
+    let token = lexer.next().unwrap();
     let name = match expect_token(
         lexer,
         &[TToken::Identifier("".to_string()), TToken::New],
@@ -48,14 +48,15 @@ pub fn parse_function(lexer: &mut Lexer) -> Box<Node> {
     };
 
     let mut children = vec![];
-    loop {
+    let end = loop {
         match lexer.peek() {
             Some(Token {
                 t: TToken::EndFunction,
-                pos: _,
+                pos,
             }) => {
+                let pos = pos.clone();
                 lexer.next();
-                break;
+                break pos;
             }
             Some(Token {
                 t: TToken::EOF,
@@ -65,19 +66,22 @@ pub fn parse_function(lexer: &mut Lexer) -> Box<Node> {
             }
             _ => children.push(parse_line(lexer)),
         }
-    }
+    };
 
+    let pos = Position::range(token.pos, end);
     Box::from(Node::Function {
         name,
         params,
         return_type,
         children,
+        pos,
+        private
     })
 }
 
-pub fn parse_procedure(lexer: &mut Lexer) -> Box<Node> {
+pub fn parse_procedure(lexer: &mut Lexer, private: bool) -> Box<Node> {
     // skip PROCEDURE token
-    lexer.next();
+    let token = lexer.next().unwrap();
     let name = match expect_token(
         lexer,
         &[TToken::Identifier("".to_string()), TToken::New],
@@ -100,14 +104,15 @@ pub fn parse_procedure(lexer: &mut Lexer) -> Box<Node> {
     let params = parse_params(lexer);
 
     let mut children = vec![];
-    loop {
+    let end = loop {
         match lexer.peek() {
             Some(Token {
                 t: TToken::EndProcedure,
-                pos: _,
+                pos,
             }) => {
+                let pos = pos.clone();
                 lexer.next();
-                break;
+                break pos;
             }
             Some(Token {
                 t: TToken::EOF,
@@ -117,12 +122,15 @@ pub fn parse_procedure(lexer: &mut Lexer) -> Box<Node> {
             }
             _ => children.push(parse_line(lexer)),
         }
-    }
+    };
 
+    let pos = Position::range(token.pos, end);
     Box::from(Node::Procedure {
         name,
         params,
         children,
+        pos,
+        private
     })
 }
 
@@ -144,11 +152,7 @@ fn parse_params(lexer: &mut Lexer) -> Vec<Box<Node>> {
             }) => {
                 let by = by.clone();
                 lexer.next();
-                if by == "BYREF" {
-                    params.push(Box::from(Node::Reference(parse_declaration(lexer))));
-                } else {
-                    params.push(parse_declaration(lexer));
-                }
+                params.push(parse_declaration(lexer, by == "BYREF", false));
             }
             Some(&Token {
                 t: TToken::Comma,
@@ -156,7 +160,7 @@ fn parse_params(lexer: &mut Lexer) -> Vec<Box<Node>> {
             }) => {
                 lexer.next();
             }
-            _ => params.push(parse_declaration(lexer)),
+            _ => params.push(parse_declaration(lexer, false, false)),
         }
     }
 
@@ -164,6 +168,8 @@ fn parse_params(lexer: &mut Lexer) -> Vec<Box<Node>> {
 }
 
 pub fn parse_return(lexer: &mut Lexer) -> Box<Node> {
-    lexer.next();
-    Box::from(Node::Return(parse_expression(lexer, &[]).0))
+    let token = lexer.next().unwrap();
+    let expr = parse_expression(lexer);
+    let pos = Position::range(token.pos, expr.pos());
+    Box::from(Node::Return { expr, pos })
 }

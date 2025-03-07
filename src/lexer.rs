@@ -197,12 +197,6 @@ pub fn lexer(buf: &mut Chars) -> Vec<Token> {
             _ => (),
         }
     }
-    // #[cfg(debug_assertions)] {
-    //     for token in tokens.clone() {
-    //         print!("{:?}, ", token.t);
-    //     }
-    //     println!();
-    // }
 
     tokens
 }

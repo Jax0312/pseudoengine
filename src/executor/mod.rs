@@ -7,9 +7,10 @@ mod run_stmt;
 mod variable;
 
 use crate::enums::{Index, Node, NodeRef, Position, VariableType};
-use crate::executor::run_stmt::run_stmts;
+use crate::executor::run_stmt::run_stmt;
 pub use crate::executor::variable::Property;
 use crate::executor::variable::{Definition, Executor, NodeDeref};
+use crate::utils::err;
 use chrono::NaiveDate;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -19,20 +20,22 @@ pub fn run(nodes: Vec<Box<Node>>) {
 
     for node in nodes {
         match *node {
-            Node::Main { mut children } => run_stmts(&mut executor, &mut children),
+            Node::Main { mut children } => {
+                for node in children {
+                    if let Node::Return { pos, .. } = *node {
+                        err("Cannot return outside of function or procedure", &pos)
+                    }
+                    run_stmt(&mut executor, &node);
+                }
+            }
             _ => unimplemented!(),
         };
     }
 }
 
-pub fn runtime_err(message: String) -> ! {
-    println!("Runtime error: {}", message);
-    panic!()
-}
-
 // Get the VariableType of primitive node
 pub fn var_type_of(node: &Box<Node>) -> VariableType {
-    match node.deref() {
+    match node.deref().clone() {
         Node::Boolean { .. } => VariableType::Boolean,
         Node::Int { .. } => VariableType::Integer,
         Node::Real { .. } => VariableType::Real,
@@ -43,13 +46,15 @@ pub fn var_type_of(node: &Box<Node>) -> VariableType {
             let inner_type = var_type_of(value.borrow().deref());
             VariableType::Pointer(Box::new(inner_type))
         }
+        Node::RefVar(value) => var_type_of(value.borrow().deref()),
         Node::Object { name, .. } => VariableType::Custom(name.clone()),
+        Node::Array { t, shape, .. } => VariableType::Array{ shape, t },
         Node::NullObject(var_type) => var_type.clone(),
-        _ => unimplemented!(),
+        _ => unimplemented!("{:?}", node),
     }
 }
 
-pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> {
+pub fn default_var(executor: &mut Executor, t: &Box<VariableType>, pos: &Position) -> Box<Node> {
     Box::new(match t.deref() {
         VariableType::Integer => Node::Int {
             val: 0,
@@ -71,26 +76,22 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             val: NaiveDate::default(),
             pos: Position::invalid(),
         },
-        VariableType::Array(_) => {
-            let mut shape = Vec::new();
+        VariableType::Array{ shape, t } => {
             let mut capacity = 1;
-            let mut inner_t = t.clone();
-            while let VariableType::Array(array) = inner_t.deref() {
-                shape.push(Index {
-                    upper: array.upper,
-                    lower: array.lower,
-                });
+            for index in shape {
                 // index bounds are inclusive
-                capacity = capacity * (array.upper - array.lower + 1);
-                inner_t = array.t.clone();
+                capacity = capacity * (index.upper - index.lower + 1);
             }
             Node::Array {
-                values: vec![NodeRef::new_ref(default_var(executor, &inner_t)); capacity as usize],
-                shape,
-                pos: Position::invalid(),
+                values: vec![
+                    NodeRef::new_ref(default_var(executor, &t, pos));
+                    capacity as usize
+                ],
+                shape: shape.clone(),
+                t: t.clone(),
             }
         }
-        VariableType::Custom(name) => match executor.get_def(name) {
+        VariableType::Custom(name) => match executor.get_def(name, pos) {
             Definition::Class { props, base, name } => def_base_class(props, base, name),
             Definition::Record { props, name } => {
                 let base = Box::new(Node::Null);
@@ -102,7 +103,7 @@ pub fn default_var(executor: &mut Executor, t: &Box<VariableType>) -> Box<Node> 
             Definition::Pointer { ref_to, .. } => {
                 return Box::from(Node::NullObject(VariableType::Pointer(ref_to.clone())))
             }
-            _ => runtime_err("Invalid type".to_string()),
+            _ => unreachable!(),
         },
         _ => unimplemented!(),
     })

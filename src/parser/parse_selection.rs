@@ -1,5 +1,5 @@
 use crate::enums::{Node, Position, Token};
-use crate::lexer::Lexer;
+use crate::lexer::{self, Lexer};
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_identifier::parse_identifier;
 use crate::parser::{parse_line, try_parse_assign};
@@ -9,18 +9,15 @@ use std::ops::Deref;
 
 pub fn parse_if(lexer: &mut Lexer) -> Box<Node> {
     // skip IF token
-    lexer.next();
-    let (cond, stop_token) = parse_expression(lexer, &[TToken::Then]);
-    // Then can be on the next line
-    if stop_token.t != TToken::Then {
-        expect_token(lexer, &[TToken::Then], "'THEN'");
-    }
+    let token = lexer.next().unwrap();
+    let cond = parse_expression(lexer);
+    expect_token(lexer, &[TToken::Then], "'THEN'");
 
     let mut true_body = vec![];
     let mut else_encountered = false;
     let mut false_body = vec![];
 
-    loop {
+    let end = loop {
         match lexer.peek() {
             Some(Token {
                 t: TToken::EOF,
@@ -28,10 +25,11 @@ pub fn parse_if(lexer: &mut Lexer) -> Box<Node> {
             }) => err("'ENDIF' expected", pos),
             Some(Token {
                 t: TToken::EndIf,
-                pos: _,
+                pos,
             }) => {
+                let pos = pos.clone();
                 lexer.next();
-                break;
+                break pos;
             }
             Some(Token {
                 t: TToken::Else,
@@ -48,67 +46,33 @@ pub fn parse_if(lexer: &mut Lexer) -> Box<Node> {
                 }
             }
         }
-    }
-
+    };
+    let pos = Position::range(token.pos, end.clone());
     Box::from(Node::If {
         cond,
         true_body,
         false_body,
+        pos,
     })
 }
 
 pub fn parse_case(lexer: &mut Lexer) -> Box<Node> {
     // skip CASE token
-    lexer.next();
+    let token = lexer.next().unwrap();
     expect_token(lexer, &[TToken::Of], "'Of'");
     let cmp = parse_identifier(lexer);
-    let mut cases = vec![];
     // skip NEWLINE token
     lexer.next();
-
-    let mut temp = vec![];
-    let mut is_range = false;
-    let mut expr = Node::Null;
-    let mut statements = vec![];
+    let mut cases = vec![];
     let mut otherwise = vec![];
 
-    let token_to_lit = |token: &Token| -> Node {
-        match &token.t {
-            TToken::StringLit(val) => Node::String {
-                val: val.clone(),
-                pos: Position::invalid(),
-            },
-            TToken::IntegerLit(val) => Node::Int {
-                val: val.clone(),
-                pos: Position::invalid(),
-            },
-            TToken::RealLit(val) => Node::Real {
-                val: val.clone(),
-                pos: Position::invalid(),
-            },
-            TToken::BoolLit(val) => Node::Boolean {
-                val: val.clone(),
-                pos: Position::invalid(),
-            },
-            _ => err("Invalid value", &token.pos),
-        }
-    };
-
-    loop {
-        let token = lexer.next().unwrap();
-        match token {
-            Token { t: TToken::To, .. } => is_range = true,
-            Token {
-                t: TToken::EndCase, ..
-            } => break,
-            Token {
-                t: TToken::EOF,
-                pos,
-            } => err("ENDCASE expected", &pos),
-            Token {
-                t: TToken::Otherwise,
-                ..
-            } => {
+    let end = loop {
+        let token = lexer.peek().unwrap().clone();
+        match token.t {
+            TToken::EndCase => break token.pos,
+            TToken::EOF => err("ENDCASE expected", &token.pos),
+            TToken::Otherwise => {
+                lexer.next();
                 expect_token(lexer, &[TToken::Colon], "':'");
                 loop {
                     match lexer.peek().unwrap() {
@@ -120,48 +84,66 @@ pub fn parse_case(lexer: &mut Lexer) -> Box<Node> {
                     }
                 }
             }
-            Token {
-                t: TToken::Newline,
-                pos,
-            } => {
-                temp.push(token);
-                statements.push(parse_line(&mut temp.clone().into_iter().peekable()));
-                temp.clear();
-            }
-            Token {
-                t: TToken::Colon,
-                pos,
-            } => {
+            _ => {
+                let mut children = Vec::new();
+                let mut start = Box::new(parse_literal(lexer));
+                if lexer.peek().unwrap().t == TToken::To {
+                    lexer.next();
+                    let end = Box::new(parse_literal(lexer));
+                    let pos = Position::range(token.pos, end.pos());
+                    start = Box::new(Node::Range { start, end, pos });
+                }
+                expect_token(lexer, &[TToken::Colon], "':'");
+                loop {
+                    if try_parse_literal(lexer).is_some()  {
+                        break;
+                    }
+                    match lexer.peek().unwrap().t {
+                        TToken::EndCase | TToken::Otherwise => break,
+                        _ => children.push(parse_line(lexer)),
+                    }
+                }
+                while Node::Null == **children.last().unwrap() {
+                    children.pop();
+                }
+                let pos = Position::range(token.pos, children.last().unwrap().pos());
                 cases.push(Box::from(Node::Case {
-                    expr: Box::from(expr),
-                    children: statements.clone(),
+                    expr: start,
+                    children,
+                    pos,
                 }));
-                expr = match temp.len() {
-                    1 => token_to_lit(temp.first().unwrap()),
-                    2 => Node::Range {
-                        start: Box::from(token_to_lit(&temp[0])),
-                        end: Box::from(token_to_lit(&temp[1])),
-                    },
-                    _ => err("Invalid expression", &pos),
-                };
-                temp.clear();
-                statements.clear();
             }
-            _ => temp.push(token),
         }
-    }
+    };
+    lexer.next();
 
-    cases.push(Box::from(Node::Case {
-        expr: Box::from(expr),
-        children: statements.clone(),
-    }));
-
-    // first case is null node
-    cases.remove(0);
-
+    let pos = Position::range(token.pos, end);
     Box::from(Node::Switch {
-        cmp: Box::from(Node::Expression(vec![cmp])),
+        cmp,
         cases,
         otherwise,
+        pos,
     })
+}
+
+fn parse_literal(lexer: &mut Lexer) -> Node {
+    let token = lexer.peek().unwrap().clone();
+    if let Some(literal) = try_parse_literal(lexer) {
+        lexer.next();
+        return literal;
+    }
+    err("Expected literal", &token.pos);
+}
+
+fn try_parse_literal(lexer: &mut Lexer) -> Option<Node> {
+    let literal = lexer.peek().unwrap();
+    let pos = literal.pos;
+    match literal.t.clone() {
+        TToken::StringLit(val) => Some(Node::String { val, pos }),
+        TToken::IntegerLit(val) => Some(Node::Int { val, pos }),
+        TToken::RealLit(val) => Some(Node::Real { val, pos }),
+        TToken::BoolLit(val) => Some(Node::Boolean { val, pos }),
+        TToken::DateLit(val) => Some(Node::Date { val, pos }),
+        _ => None,
+    }
 }

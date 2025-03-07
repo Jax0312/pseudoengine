@@ -1,4 +1,4 @@
-use crate::enums::{Node, Token};
+use crate::enums::{Node, Position, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_expr::parse_expression;
 use crate::parser::parse_identifier::parse_identifier;
@@ -7,7 +7,7 @@ use crate::utils::{err, expect_token};
 
 pub fn parse_input(lexer: &mut Lexer) -> Box<Node> {
     // skip INPUT token
-    lexer.next();
+    let token = lexer.next().unwrap();
     let Token {
         t: TToken::Identifier(name),
         pos,
@@ -15,118 +15,119 @@ pub fn parse_input(lexer: &mut Lexer) -> Box<Node> {
     else {
         unreachable!()
     };
-    Box::from(Node::Input {
-        child: Box::new(Node::Var { name, pos }),
-    })
+    let child = Box::new(Node::Var { name, pos });
+    let pos = Position::range(token.pos, pos);
+    Box::from(Node::Input { child, pos })
 }
 
 pub fn parse_output(lexer: &mut Lexer) -> Box<Node> {
     let mut children = Vec::new();
 
     // skip OUTPUT token
-    lexer.next();
+    let token = lexer.next().unwrap();
     loop {
-        let (exp, stop_token) = parse_expression(lexer, &[TToken::Comma]);
-        children.push(exp);
-        if stop_token.t != TToken::Comma {
+        children.push(parse_expression(lexer));
+        if lexer.peek().unwrap().t != TToken::Comma {
             break;
         }
+        lexer.next();
     }
-
-    Box::from(Node::Output { children })
+    let pos = Position::range(token.pos, children.last().unwrap().pos());
+    Box::from(Node::Output { children, pos })
 }
 
 pub fn parse_open_file(lexer: &mut Lexer) -> Box<Node> {
     // skip OPENFILE token
-    lexer.next();
-    let (filename, stop_token) = parse_expression(lexer, &[TToken::For]);
-    if stop_token.t != TToken::For {
-        err("'FOR' expected", &stop_token.pos);
-    }
-    let Token { t: mode, pos: _ } = expect_token(
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    expect_token(lexer, &[TToken::For], "'FOR'");
+    let Token { t: mode, pos } = expect_token(
         lexer,
         &[TToken::FileMode("".to_string())],
-        "'APPEND', 'READ', 'WRITE' expected",
+        "'APPEND', 'READ', 'WRITE'",
     );
-    Box::from(Node::OpenFile { filename, mode })
+    let pos = Position::range(token.pos, pos);
+    Box::from(Node::OpenFile {
+        filename,
+        mode,
+        pos,
+    })
 }
 
 pub fn parse_close_file(lexer: &mut Lexer) -> Box<Node> {
     // skip CLOSEFILE token
-    lexer.next();
-    Box::from(Node::CloseFile(parse_expression(lexer, &[]).0))
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    let pos = Position::range(token.pos, filename.pos());
+    Box::from(Node::CloseFile { filename, pos })
 }
 
 pub fn parse_read_file(lexer: &mut Lexer) -> Box<Node> {
     // skip READFILE token
-    lexer.next();
-    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
-    if stop_token.t != TToken::Comma {
-        err("',' expected", &stop_token.pos);
-    }
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    expect_token(lexer, &[TToken::Comma], "','");
     let var = parse_identifier(lexer);
     match *var {
         Node::Var { .. } | Node::ArrayVar { .. } => (),
-        _ => err("Identifier expected", &stop_token.pos),
+        _ => err("Identifier expected", &var.pos()),
     }
-    Box::from(Node::ReadFile { filename, var })
+    let pos = Position::range(token.pos, var.pos());
+    Box::from(Node::ReadFile { filename, var, pos })
 }
 
 pub fn parse_write_file(lexer: &mut Lexer) -> Box<Node> {
     // skip WRITEFILE token
-    lexer.next();
-    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
-    if stop_token.t != TToken::Comma {
-        err("',' expected", &stop_token.pos);
-    }
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    expect_token(lexer, &[TToken::Comma], "','");
+    let expr = parse_expression(lexer);
+    let pos = Position::range(token.pos, expr.pos());
     Box::from(Node::WriteFile {
         filename,
-        expr: parse_expression(lexer, &[]).0,
+        expr,
+        pos,
     })
 }
 
 pub fn parse_seek_file(lexer: &mut Lexer) -> Box<Node> {
     // skip SEEK token
-    lexer.next();
-    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
-    if stop_token.t != TToken::Comma {
-        err("',' expected", &stop_token.pos);
-    }
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    expect_token(lexer, &[TToken::Comma], "','");
+    let expr = parse_expression(lexer);
+    let pos = Position::range(token.pos, expr.pos());
     Box::from(Node::SeekFile {
         filename,
-        expr: parse_expression(lexer, &[]).0,
+        expr,
+        pos,
     })
 }
 
 pub fn parse_get_record(lexer: &mut Lexer) -> Box<Node> {
     // skip GETRECORD token
-    lexer.next();
-    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
-    if stop_token.t != TToken::Comma {
-        err("',' expected", &stop_token.pos);
-    }
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    expect_token(lexer, &[TToken::Comma], "','");
     let var = parse_identifier(lexer);
     match *var {
         Node::Var { .. } | Node::ArrayVar { .. } => (),
-        _ => err("Identifier expected", &stop_token.pos),
+        _ => err("Identifier expected", &var.pos()),
     }
-    Box::from(Node::GetRecord { filename, var })
+    let pos = Position::range(token.pos, var.pos());
+    Box::from(Node::GetRecord { filename, var, pos })
 }
 
 pub fn parse_put_record(lexer: &mut Lexer) -> Box<Node> {
     // skip PUTRECORD token
-    lexer.next();
-    let (filename, stop_token) = parse_expression(lexer, &[TToken::Comma]);
-    if stop_token.t != TToken::Comma {
-        err("',' expected", &stop_token.pos);
-    }
+    let token = lexer.next().unwrap();
+    let filename = parse_expression(lexer);
+    expect_token(lexer, &[TToken::Comma], "','");
     let var = parse_identifier(lexer);
     match *var {
         Node::Var { .. } | Node::ArrayVar { .. } => (),
-        _ => err("Identifier expected", &stop_token.pos),
+        _ => err("Identifier expected", &var.pos()),
     }
-    Box::from(Node::PutRecord {
-        filename,
-        var: Box::from(Node::Expression(vec![var])),
-    })
+    let pos = Position::range(token.pos, var.pos());
+    Box::from(Node::PutRecord { filename, var, pos })
 }

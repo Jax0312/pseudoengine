@@ -1,14 +1,24 @@
-TYPE Ptr = ^STRING
+TYPE Ptr = ^INTEGER
+TYPE Obj
+    DECLARE X: INTEGER
+    DECLARE Y: Ptr
+ENDTYPE
 
-DECLARE A : STRING
+DECLARE A : INTEGER
 DECLARE B : Ptr
 DECLARE C : Ptr
+DECLARE D : Obj
 
-A <- "Hello World 1"
+A <- 1
 B <- ^A
-OUTPUT B^
-B^ <- "Hello World 2"
-OUTPUT A
+OUTPUT "Assigning ^literal to pointer ",  B^ = 1
+B^ <- 2
+OUTPUT "Assigning literal to pointer^ ",  A = 2
 C <- B
-C^ <- "Hello World 3"
-OUTPUT A
+OUTPUT "Assigning pointer to pointer ",  A = 2
+
+D.X <- 1
+D.Y <- ^D.X
+OUTPUT "Assigning ^literal to obj.ptr ",  D.Y^ = 1
+D.Y^ <- 2
+OUTPUT "Assigning literal to obj.ptr^ ",  D.X = 2

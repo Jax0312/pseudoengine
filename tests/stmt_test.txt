@@ -1,0 +1,52 @@
+DECLARE Count: INTEGER
+DECLARE Result: INTEGER
+DECLARE Array: ARRAY[1:2, 3:4] OF INTEGER
+Count <- 3
+
+IF 1 > 2 THEN
+    OUTPUT "If statement invalid"
+ELSE
+    OUTPUT "If statement valid"
+ENDIF
+
+CASE OF Count
+    1 : OUTPUT "Case statement invalid"
+    2 : OUTPUT "Case statement invalid"
+    3 : OUTPUT "Case statement valid"
+    OTHERWISE : OUTPUT "Case statement invalid"
+ENDCASE
+
+FOR Index <- 1 TO 1
+    OUTPUT "For statement valid"
+NEXT Index
+
+REPEAT
+    Count <- Count + 1
+    OUTPUT "Repeat statement valid"
+UNTIL Count = 4
+
+WHILE Count < 6
+    Count <- Count + 2
+    OUTPUT "While statement valid"
+ENDWHILE
+
+Result <- 1 + 2 * 3 + 4
+IF Result = 11 THEN
+    OUTPUT "Operator valid"
+ELSE
+    OUTPUT "Operator invalid"
+ENDIF
+
+Result <- (1 + 2) * 3
+IF Result = 9 THEN
+    OUTPUT "Brackets valid"
+ELSE
+    OUTPUT "Brackets invalid"
+ENDIF
+
+Array[2, 4] <- 2
+IF Array[2, 4] = 2 THEN
+    OUTPUT "Array valid"
+ELSE
+    OUTPUT "Array invalid"
+ENDIF

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
-use crate::enums::{Index, Node, NodeRef, VariableType};
+use crate::enums::{Index, Node, NodeRef, Position, VariableType};
 use crate::executor::run_expr::{get_array_index, run_expr, run_fn_call, run_fn_call_inner};
 use crate::executor::run_stmt::{as_number_expr, run_stmt};
 use crate::executor::variable::{Definition, Executor, NodeDeref, Property};
-use crate::executor::{def_base_class, default_var, runtime_err};
+use crate::executor::{def_base_class, default_var};
+use crate::utils::err;
 
 use super::var_type_of;
 
@@ -20,82 +21,107 @@ pub fn run_class(
         match node.deref() {
             Node::Null => (),
             _ => {
-                for (name, prop) in run_prop_decl(executor, &node, false).into_iter() {
+                for (name, prop) in run_prop_decl(executor, &node).into_iter() {
+                    if class_props.contains_key(&name) {
+                        if let Property::Var { .. } = prop {
+                            err(
+                                format!("Property {} already exists", name).as_str(),
+                                &node.pos(),
+                            );
+                        } else {
+                            err(
+                                format!("Method {} already exists", name).as_str(),
+                                &node.pos(),
+                            );
+                        }
+                    };
                     class_props.insert(name, prop);
                 }
             }
         }
     }
-    if let Node::String { val, .. } = name.deref() {
+    if let Node::String { val, pos } = name.deref() {
         let base = match base.deref() {
-            Node::String { val, .. } => executor.get_def(val),
+            Node::String { val, pos } => executor.get_def(val, pos),
             _ => Definition::Null,
         };
-        return executor.declare_def(
-            val,
-            Definition::Class {
-                name: val.clone(),
-                base: Box::new(base),
-                props: class_props,
-            },
-        );
+        if let Some(Property::Method { .. }) = class_props.get("new") {
+            return executor.declare_def(
+                val,
+                Definition::Class {
+                    name: val.clone(),
+                    base: Box::new(base),
+                    props: class_props,
+                },
+                pos,
+            );
+        }
+        err("Class must have a constructor", pos);
     }
-    runtime_err("Invalid function declaration".to_string())
+    unreachable!()
 }
 
-pub fn run_record(executor: &mut Executor, name: &String, children: &Vec<Box<Node>>) {
+pub fn run_record(executor: &mut Executor, name: &Box<Node>, children: &Vec<Box<Node>>) {
     let mut props = HashMap::new();
     for node in children.clone() {
         match node.deref() {
             Node::Null => (),
             _ => {
-                for (name, prop) in run_prop_decl(executor, &node, false).into_iter() {
+                for (name, prop) in run_prop_decl(executor, &node).into_iter() {
                     props.insert(name, prop);
                 }
             }
         }
     }
-    executor.declare_def(
-        name,
-        Definition::Record {
-            name: name.clone(),
-            props,
-        },
-    )
+    if let Node::String { val, pos } = name.deref() {
+        return executor.declare_def(
+            val,
+            Definition::Record {
+                name: val.clone(),
+                props,
+            },
+            pos,
+        )
+    }
+    unreachable!()
 }
 
-fn run_prop_decl(
-    executor: &mut Executor,
-    prop: &Box<Node>,
-    private: bool,
-) -> Vec<(String, Property)> {
+fn run_prop_decl(executor: &mut Executor, prop: &Box<Node>) -> Vec<(String, Property)> {
     match prop.deref() {
         Node::Procedure {
             name,
             params,
             children,
-        } => run_method_decl(name, params, children, private, false),
+            private,
+            ..
+        } => run_method_decl(name, params, children, *private, false),
         Node::Function {
             name,
             params,
             children,
+            private,
             ..
-        } => run_method_decl(name, params, children, private, true),
-        Node::Declare { children, t } => children
+        } => run_method_decl(name, params, children, *private, true),
+        Node::Declare {
+            children,
+            t,
+            private,
+            pos,
+            ..
+        } => children
             .iter()
             .map(|var_name| {
                 (
                     var_name.clone(),
                     Property::Var {
-                        private,
-                        value: NodeRef::new_ref(default_var(executor, t)),
+                        private: *private,
+                        value: NodeRef::new_ref(default_var(executor, t, pos)),
                         t: t.clone(),
                     },
                 )
             })
             .collect(),
-        Node::Private(node) => return run_prop_decl(executor, node, true),
-        _ => runtime_err("Invalid class declaration".to_string()),
+        _ => err("Statement not allowed within class", &prop.pos()),
     }
 }
 
@@ -106,7 +132,25 @@ fn run_method_decl(
     private: bool,
     returns: bool,
 ) -> Vec<(String, Property)> {
+    let mut names = Vec::new();
+    for param in params {
+        if let Node::Var { name, .. } = param.deref() {
+            if names.contains(name) {
+                err(
+                    format!("Duplicate parameter {}", name).as_str(),
+                    &param.pos(),
+                );
+            }
+            names.push(name.clone());
+        }
+    }
     if let Node::String { val, .. } = name.deref() {
+        if val == "new" && private {
+            err("Constructor cannot be private", &name.pos())
+        }
+        if val == "new" && returns {
+            err("Constructor must be a procedure", &name.pos())
+        }
         return vec![(
             val.clone(),
             Property::Method {
@@ -122,60 +166,62 @@ fn run_method_decl(
 
 pub fn run_access_mut(executor: &mut Executor, node: &Box<Node>) -> NodeRef {
     match node.deref() {
-        Node::Var { name, .. } => run_var_access(executor, name),
-        Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-        Node::Dereference(value) => run_pointer_access(executor, value),
-        Node::Composite { children } => {
+        Node::Var { name, pos } => run_var_access(executor, name, pos),
+        Node::ArrayVar { name, indices, pos } => run_array_access(executor, name, indices, pos),
+        Node::Dereference { expr, .. } => run_pointer_access(executor, expr),
+        Node::Composite { children, .. } => {
             let mut base = match children[0].deref() {
-                Node::Var { name, .. } => run_var_access(executor, name),
-                Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-                _ => runtime_err("Invalid value access".to_string()),
+                Node::Var { name, pos } => run_var_access(executor, name, pos),
+                Node::ArrayVar { name, indices, pos } => {
+                    run_array_access(executor, name, indices, pos)
+                }
+                _ => unreachable!(),
             };
             for child in children.iter().skip(1) {
                 base = match child.deref() {
-                    Node::Var { name, .. } => run_prop_access(base, name),
-                    Node::ArrayVar { name, indices, .. } => {
-                        run_array_prop_access(executor, base, name, indices)
+                    Node::Var { name, pos } => run_prop_access(base, name, pos),
+                    Node::ArrayVar { name, indices, pos } => {
+                        run_array_prop_access(executor, base, name, indices, pos)
                     }
-                    _ => runtime_err("Invalid value access".to_string()),
+                    _ => unreachable!(),
                 };
             }
             base
         }
-        _ => runtime_err("Invalid value access".to_string()),
+        _ => unreachable!(),
     }
 }
 
 pub fn run_access(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
     match node.deref() {
-        Node::Var { name, .. } => run_var_access(executor, name).clone_node(),
-        Node::ArrayVar { name, indices, .. } => {
-            run_array_access(executor, name, indices).clone_node()
+        Node::Var { name, pos } => run_var_access(executor, name, pos).clone_node(),
+        Node::ArrayVar { name, indices, pos } => {
+            run_array_access(executor, name, indices, pos).clone_node()
         }
-        Node::Composite { children } => run_composite_access(executor, children),
-        _ => runtime_err("Invalid value access".to_string()),
+        Node::Composite { children, .. } => run_composite_access(executor, children),
+        _ => unreachable!(),
     }
 }
 
 pub fn run_composite_access(executor: &mut Executor, children: &Vec<Box<Node>>) -> Box<Node> {
     let mut base = match children[0].deref() {
-        Node::Var { name, .. } => run_var_access(executor, name),
-        Node::ArrayVar { name, indices, .. } => run_array_access(executor, name, indices),
-        Node::FunctionCall { name, params } => {
-            NodeRef::new_ref(run_fn_call(executor, name, params))
+        Node::Var { name, pos } => run_var_access(executor, name, pos),
+        Node::ArrayVar { name, indices, pos } => run_array_access(executor, name, indices, pos),
+        Node::FunctionCall { name, params, pos } => {
+            NodeRef::new_ref(run_fn_call(executor, name, params, pos))
         }
-        _ => runtime_err("Invalid value access".to_string()),
+        _ => unreachable!(),
     };
     for child in children.iter().skip(1) {
         base = match child.deref() {
-            Node::Var { name, .. } => run_prop_access(base, name),
-            Node::ArrayVar { name, indices, .. } => {
-                run_array_prop_access(executor, base, name, indices)
+            Node::Var { name, pos } => run_prop_access(base, name, pos),
+            Node::ArrayVar { name, indices, pos } => {
+                run_array_prop_access(executor, base, name, indices, pos)
             }
-            Node::FunctionCall { name, params, .. } => {
-                return run_method_call(executor, base, name, params);
+            Node::FunctionCall { name, params, pos } => {
+                return run_method_call(executor, base, name, params, pos);
             }
-            _ => runtime_err("Invalid value access".to_string()),
+            _ => unreachable!(),
         };
     }
     base.clone_node()
@@ -186,23 +232,29 @@ pub fn run_pointer_access(executor: &mut Executor, node: &Box<Node>) -> NodeRef 
         Node::Var { .. }
         | Node::ArrayVar { .. }
         | Node::Composite { .. }
-        | Node::Dereference(_) => {}
-        _ => runtime_err("Cannot dereference value".to_string()),
+        | Node::Dereference { .. } => {}
+        _ => err(
+            "Value is not a pointer, it cannot be dereferenced",
+            &node.pos(),
+        ),
     };
     let pointer = run_access_mut(executor, node);
     if let Node::Pointer(value) = pointer.borrow().deref().deref() {
         return value.clone();
     }
-    runtime_err("Cannot dereference value".to_string());
+    err(
+        "Value is not a pointer, it cannot be dereferenced",
+        &node.pos(),
+    );
 }
 
-fn run_var_access(executor: &mut Executor, name: &String) -> NodeRef {
-    let var = &executor.get_var_mut(name);
+fn run_var_access(executor: &mut Executor, name: &String, pos: &Position) -> NodeRef {
+    let var = &executor.get_var_mut(name, pos);
     if !var.mutable {
-        runtime_err(format!(
-            "{} is a constant, it's value cannot be modified",
-            name
-        ))
+        err(
+            format!("{} is a constant, it's value cannot be modified", name).as_str(),
+            pos,
+        )
     }
     if let Node::RefVar(reference) = var.value.borrow().deref().deref() {
         return reference.clone();
@@ -210,7 +262,13 @@ fn run_var_access(executor: &mut Executor, name: &String) -> NodeRef {
     var.value.clone()
 }
 
-fn run_array_access(executor: &mut Executor, name: &String, indices: &Vec<Box<Node>>) -> NodeRef {
+fn run_array_access(
+    executor: &mut Executor,
+    name: &String,
+    indices: &Vec<Box<Node>>,
+    pos: &Position,
+) -> NodeRef {
+    let nodes = indices.clone();
     let indices = indices
         .iter()
         .map(|index| match run_expr(executor, index).deref() {
@@ -218,21 +276,21 @@ fn run_array_access(executor: &mut Executor, name: &String, indices: &Vec<Box<No
             _ => unreachable!(),
         })
         .collect::<Vec<i64>>();
-    let var = &executor.get_var_mut(name);
+    let var = &executor.get_var_mut(name, pos);
     if !var.mutable {
-        runtime_err(format!(
-            "{} is a constant, it's value cannot be modified",
-            name
-        ))
+        err(
+            format!("{} is a constant, it's value cannot be modified", name).as_str(),
+            pos,
+        )
     }
     let value = match var.value.borrow().deref().deref() {
         Node::RefVar(reference) => reference.clone(),
         _ => var.value.clone(),
     };
     if let Node::Array { values, shape, .. } = value.borrow().deref().deref() {
-        return values[get_array_index(indices, shape)].clone();
+        return values[get_array_index(indices, shape, &nodes)].clone();
     };
-    runtime_err("Invalid array access".to_string());
+    err(format!("{} is not an array", name).as_str(), pos)
 }
 
 fn run_base_prop_access(
@@ -245,7 +303,7 @@ fn run_base_prop_access(
     } else if let Node::Object { base, props, .. } = base.deref() {
         return run_base_prop_access(name, base, props);
     } else {
-        return None;
+        None
     }
 }
 
@@ -254,14 +312,16 @@ fn run_array_prop_access(
     base: NodeRef,
     name: &String,
     indices: &Vec<Box<Node>>,
+    pos: &Position,
 ) -> NodeRef {
     if let Node::Object { props, base, .. } = base.borrow().deref().deref() {
         let prop = run_base_prop_access(name, base, props);
         if let Some(Property::Var { value, private, .. }) = prop {
             if private {
-                runtime_err("Cannot access private property".to_string())
+                err("Cannot access private property", pos)
             }
             if let Node::Array { values, shape, .. } = value.borrow().deref().deref() {
+                let nodes = indices.clone();
                 let indices = indices
                     .iter()
                     .map(|index| match run_expr(executor, index).deref() {
@@ -269,24 +329,27 @@ fn run_array_prop_access(
                         _ => unreachable!(),
                     })
                     .collect::<Vec<i64>>();
-                return values[get_array_index(indices, shape)].clone();
+                return values[get_array_index(indices, shape, &nodes)].clone();
             };
+            err(format!("{} is not an array", name).as_str(), pos)
         }
+        err(format!("Property '{}' not found", name).as_str(), pos)
     }
-    runtime_err("Invalid array property access".to_string());
+    err("Value is not an object", pos)
 }
 
-fn run_prop_access(base: NodeRef, name: &String) -> NodeRef {
+fn run_prop_access(base: NodeRef, name: &String, pos: &Position) -> NodeRef {
     if let Node::Object { props, base, .. } = base.borrow().deref().deref() {
         let prop = run_base_prop_access(name, base, props);
         if let Some(Property::Var { value, private, .. }) = prop {
             if private {
-                runtime_err("Cannot access private property".to_string())
+                err("Cannot access private property", pos)
             }
             return value;
         }
+        err(format!("Property '{}' not found", name).as_str(), pos)
     }
-    runtime_err("Invalid property access".to_string());
+    err("Value is not an object", pos)
 }
 
 fn run_method_call(
@@ -294,20 +357,22 @@ fn run_method_call(
     base: NodeRef,
     name: &String,
     call_params: &Vec<Box<Node>>,
+    pos: &Position,
 ) -> Box<Node> {
     if let Node::Object { props, base, .. } = base.borrow().deref().deref() {
+        let prop = run_base_prop_access(name, base, props);
         if let Some(Property::Method {
             params: fn_params,
             children,
             private,
             returns,
-        }) = props.get(name)
+        }) = prop
         {
             executor.enter_scope();
             for (name, prop) in props.iter() {
                 if let Property::Var { value, t, .. } = prop {
                     let value = Box::new(Node::RefVar(value.clone()));
-                    executor.declare_var(name, value, &t, true);
+                    executor.declare_var(name, value, &t, true, pos);
                 } else if let Property::Method {
                     params,
                     children,
@@ -322,6 +387,7 @@ fn run_method_call(
                             children,
                             returns,
                         },
+                        pos,
                     );
                 }
             }
@@ -331,29 +397,31 @@ fn run_method_call(
                     Box::new(Node::RefVar(NodeRef::new_ref(base.clone()))),
                     &Box::new(var_type_of(base)),
                     true,
+                    pos,
                 );
             }
-            if *private {
-                runtime_err("Cannot call private method".to_string())
+            if private {
+                err("Cannot call private method", pos)
             }
-            let result = run_fn_call_inner(executor, call_params, fn_params, children, *returns);
+            let result =
+                run_fn_call_inner(executor, call_params, &fn_params, &children, returns, pos);
             executor.exit_scope();
             return result;
         }
-        runtime_err("Method does not exist".to_string())
+        err(format!("Method '{}' not found", name).as_str(), pos)
     }
-    runtime_err("Invalid method access".to_string())
+    unreachable!()
 }
 
-pub fn run_create_obj(executor: &mut Executor, node: &Box<Node>) -> Box<Node> {
-    if let Node::FunctionCall { params, name } = node.deref() {
-        if let Definition::Class { props, base, name } = executor.get_def(name) {
+pub fn run_create_obj(executor: &mut Executor, node: &Box<Node>, pos: &Position) -> Box<Node> {
+    if let Node::FunctionCall { params, name, .. } = node.deref() {
+        if let Definition::Class { props, base, name } = executor.get_def(name, pos) {
             let base = def_base_class(props, base, name.clone());
             let base_ref = NodeRef::new_ref(Box::new(base));
-            run_method_call(executor, base_ref.clone(), &"new".to_string(), params);
+            run_method_call(executor, base_ref.clone(), &"new".to_string(), params, pos);
             return base_ref.clone_node();
         }
-        runtime_err(format!("{} is not a class", name))
+        err(format!("{} is not a class", name).as_str(), pos)
     }
     unreachable!()
 }

@@ -92,8 +92,12 @@ fn execute(filepath: &str) {
 mod tests {
     use crate::execute;
     #[test]
+    fn stmt_test() {
+        execute("tests/stmt_test.txt");
+    }
+    #[test]
     fn builtin_func_test() {
-        execute("tests/builtin_func_test.txt");
+        execute("tests/builtin_test.txt");
     }
     #[test]
     fn func_test() {
@@ -104,8 +108,8 @@ mod tests {
         execute("tests/file_test.txt");
     }
     #[test]
-    fn classes_test() {
-        execute("tests/classes_test.txt");
+    fn class_test() {
+        execute("tests/class_test.txt");
     }
     #[test]
     fn pointer_test() {

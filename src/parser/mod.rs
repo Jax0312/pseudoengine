@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::vec;
 
-use crate::enums::{Node, Token};
+use crate::enums::{Node, Position, Token};
 use crate::lexer::Lexer;
 use crate::parser::parse_class::parse_class;
 use crate::parser::parse_declare::{parse_constant, parse_declare, parse_user_defined_data};
@@ -29,8 +29,8 @@ pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
 
     while lexer.peek().is_some() {
         match lexer.peek().unwrap().t {
-            TToken::Procedure => main_children.push(parse_procedure(lexer)),
-            TToken::Function => main_children.push(parse_function(lexer)),
+            TToken::Procedure => main_children.push(parse_procedure(lexer, false)),
+            TToken::Function => main_children.push(parse_function(lexer, false)),
             TToken::Class => main_children.push(parse_class(lexer)),
             _ => main_children.push(parse_line(lexer)),
         }
@@ -40,14 +40,12 @@ pub fn parse_file(lexer: &mut Lexer) -> Vec<Box<Node>> {
         children: main_children,
     }));
 
-    #[cfg(debug_assertions)]
-    println!("\nAST\n{:#?}", nodes);
-
     nodes
 }
 
 pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
-    match lexer.peek().unwrap().t {
+    let token = lexer.peek().unwrap();
+    match token.t {
         TToken::Declare => parse_declare(lexer),
         TToken::Constant => parse_constant(lexer),
         TToken::While => parse_while(lexer),
@@ -67,7 +65,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
         TToken::Case => parse_case(lexer),
         TToken::Return => parse_return(lexer),
         TToken::Identifier(_) => {
-            let lhs = parse_identifier(lexer);
+            let lhs = parse_expression(lexer);
             try_parse_assign(lexer, lhs)
         }
         TToken::Call => parse_call(lexer),
@@ -83,7 +81,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Box<Node> {
             "Class can only be declared in the global scope",
             &lexer.peek().unwrap().pos,
         ),
-        _ => err("Invalid syntax", &lexer.peek().unwrap().pos),
+        _ => err("Expected statement", &token.pos),
     }
 }
 
@@ -91,21 +89,19 @@ fn parse_call(lexer: &mut Lexer) -> Box<Node> {
     lexer.next();
     let func_call = parse_identifier(lexer);
     if let Node::FunctionCall { .. } = func_call.deref() {
-        Box::from(Node::Expression(vec![func_call]))
+        func_call
     } else {
         err("PROCEDURE expected", &lexer.peek().unwrap().pos);
     }
 }
 
 fn try_parse_assign(lexer: &mut Lexer, lhs: Box<Node>) -> Box<Node> {
-    match lexer.next().unwrap() {
-        Token {
-            t: TToken::Assignment,
-            pos: _,
-        } => Box::from(Node::Assignment {
-            lhs,
-            rhs: parse_expression(lexer, &[]).0,
-        }),
-        _ => Box::from(Node::Expression(vec![lhs])),
+    match lexer.next().unwrap().t {
+        TToken::Assignment => {
+            let rhs = parse_expression(lexer);
+            let pos = Position::range(lhs.pos(), rhs.pos());
+            Box::from(Node::Assignment { lhs, rhs, pos })
+        }
+        _ => lhs,
     }
 }
