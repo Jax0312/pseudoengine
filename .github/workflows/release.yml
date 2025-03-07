@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    branches: [release]
+
+jobs:
+  build:
+    name: Build Rust Binary
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Rename and zip binary
+        run: |
+          mkdir -p artifacts
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            mv target/release/pseudoengine artifacts/pseudoengine
+            cd artifacts && zip pseudoengine-linux.zip pseudoengine
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            mv target/release/pseudoengine artifacts/pseudoengine
+            cd artifacts && zip pseudoengine-macos.zip pseudoengine
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            mv target/release/pseudoengine.exe artifacts/pseudoengine.exe
+            cd artifacts && powershell Compress-Archive -Path pseudoengine.exe -DestinationPath pseudoengine-windows.zip
+          fi
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pseudoengine-${{ runner.os }}
+          path: artifacts/*.zip
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
