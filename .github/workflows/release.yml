@@ -39,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pseudoengine-${{ runner.os }}
-          path: artifacts/*.zip
+          path: artifacts/*
 
   release:
     name: Create GitHub Release
@@ -55,7 +55,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v0.0.1"
           files: artifacts/**/*
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_WORKFLOW }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
