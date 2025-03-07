@@ -61,4 +61,4 @@ jobs:
           tag_name: "v0.0.1"
           files: artifacts/**/*.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_WORKFLOW }}
